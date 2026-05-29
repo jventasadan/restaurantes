@@ -410,20 +410,25 @@ function ClientView() {
         console.log("Acción ejecutada por Claude:", name, input);
 
         if (name === 'update_cart') {
-          // Claude actualiza la lista de items
+          // Claude actualiza la lista de items con búsqueda flexible
           input.items.forEach(actionItem => {
-            const menuItem = menuItems.find(i => i.name.toLowerCase() === actionItem.name.toLowerCase());
-            if (menuItem) {
-              if (actionItem.quantity <= 0) {
-                // Eliminar del carrito
-                updateCartQuantity(menuItem, actionItem.notes || '', 0);
-              } else {
-                // Añadir al carrito
-                addToCart(menuItem, actionItem.quantity, actionItem.notes || '');
-              }
+            const searchName = actionItem.name.toLowerCase().trim();
+            // Búsqueda: exacta → parcial → incluye
+            let menuItem = menuItems.find(i => i.name.toLowerCase() === searchName)
+              || menuItems.find(i => i.name.toLowerCase().includes(searchName) || searchName.includes(i.name.toLowerCase()))
+              || menuItems.find(i => i.name.toLowerCase().split(' ').some(w => searchName.includes(w) && w.length > 3));
+            
+            if (!menuItem) {
+              // Crear ítem genérico para que llegue al panel de caja
+              menuItem = { id: 'custom-' + Date.now(), name: actionItem.name, price: 0, category: 'General', allergens: [] };
+            }
+            
+            if (actionItem.quantity <= 0) {
+              updateCartQuantity(menuItem, actionItem.notes || '', 0);
+            } else {
+              addToCart(menuItem, actionItem.quantity, actionItem.notes || '');
             }
           });
-          // Abrir el carrito para mostrar el cambio al cliente
           setCartOpen(true);
         } else if (name === 'call_waiter') {
           await callPhysicalWaiter();
