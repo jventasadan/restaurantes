@@ -405,3 +405,25 @@ button:disabled, .btn:disabled {
 .bg-success-subtle { background: rgba(142, 155, 119, 0.12); }
 .bg-warning-subtle { background: rgba(219, 160, 91, 0.12); }
 .bg-danger-subtle { background: rgba(192, 112, 112, 0.12); }
+
+/* ===== RESPONSIVE GLOBAL ===== */
+* { box-sizing: border-box; }
+
+@media (max-width: 768px) {
+  .dashboard-layout { flex-direction: column !important; }
+  .sidebar { width: 100% !important; min-width: unset !important; padding: 1rem !important; }
+  .kanban-board { grid-template-columns: 1fr !important; }
+  .chat-input-area { padding: 0.75rem !important; }
+  h1 { font-size: 1.4rem !important; }
+  h2 { font-size: 1.1rem !important; }
+}
+
+@media (max-width: 480px) {
+  body { font-size: 15px; }
+  input, select, textarea, button { font-size: 16px !important; } /* Evita zoom en iOS */
+}
+
+/* Scrollbar minimalista */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.3); border-radius: 2px; }
