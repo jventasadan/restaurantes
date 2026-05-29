@@ -34,15 +34,41 @@ export default async function handler(req, res) {
   }, { onConflict: 'restaurant_id' });
   results.push({ step: 'branding-ventas', error: r2?.message || null });
 
-  // 3. Verificar/crear tabla restaurant_users
-  const { error: checkErr } = await supabase.from('restaurant_users').select('id').limit(1);
-  results.push({ step: 'check_users_table', exists: !checkErr, error: checkErr?.message });
-
-  // 4. Crear usuario (hash SHA-256 de "Jonathan27")
-  const passwordHash = 'f9f4335718dae67309098ca95076e69f704ab3c9ce26f0e3aa2f97bc8a6fca6d';
+  // 3. Crear tabla restaurant_users via Management API de Supabase
+  const projectRef = 'uojwxuhxahkjthzgjdiy';
+  const mgmtSql = `
+    CREATE TABLE IF NOT EXISTS public.restaurant_users (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      restaurant_id text NOT NULL,
+      email text NOT NULL UNIQUE,
+      password_hash text NOT NULL,
+      role text DEFAULT 'admin',
+      created_at timestamptz DEFAULT now()
+    );
+    GRANT ALL ON public.restaurant_users TO anon, authenticated, service_role;
+  `;
   
-  if (!checkErr) {
-    // La tabla existe, insertar usuario
+  // Intentar via REST API con service_role
+  const pgResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+    method: 'POST',
+    headers: {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ sql: mgmtSql })
+  }).catch(e => ({ ok: false, statusText: e.message }));
+  
+  results.push({ step: 'create_users_table_rpc', status: pgResponse.status || 'fetch_error' });
+
+  // Verificar si existe ahora
+  const { error: checkErr } = await supabase.from('restaurant_users').select('id').limit(1);
+  const tableExists = !checkErr;
+  results.push({ step: 'table_exists', exists: tableExists, error: checkErr?.message });
+
+  // 4. Si la tabla existe, crear usuario
+  if (tableExists) {
+    const passwordHash = 'f9f4335718dae67309098ca95076e69f704ab3c9ce26f0e3aa2f97bc8a6fca6d';
     const { data: existUser } = await supabase.from('restaurant_users')
       .select('id').eq('email', 'j.ventas.adan@gmail.com').maybeSingle();
     
@@ -55,37 +81,46 @@ export default async function handler(req, res) {
       });
       results.push({ step: 'usuario-creado', error: r3?.message || null });
     } else {
-      // Actualizar hash si ya existe
-      const { error: r3 } = await supabase.from('restaurant_users')
+      await supabase.from('restaurant_users')
         .update({ password_hash: passwordHash, restaurant_id: 'restaurante-ventas' })
         .eq('email', 'j.ventas.adan@gmail.com');
-      results.push({ step: 'usuario-actualizado', error: r3?.message || null });
+      results.push({ step: 'usuario-actualizado' });
     }
   }
 
-  // 5. Añadir bebidas a al-punto-rivas
-  const bebidas = [
-    { name: 'Coca-Cola', description: 'Refresco de cola', price: 2.50 },
-    { name: 'Agua Mineral', description: 'Agua mineral natural 0.5L', price: 1.80 },
-    { name: 'Cerveza', description: 'Caña de cerveza nacional', price: 2.80 },
-    { name: 'Vino de la casa', description: 'Copa de vino tinto/blanco/rosado', price: 3.50 },
-    { name: 'Fanta', description: 'Refresco de naranja/limón', price: 2.50 },
-    { name: 'Zumo de naranja', description: 'Zumo natural exprimido', price: 3.20 },
-  ];
+  // 5. Añadir bebidas con INSERT simple (ignorar duplicados)
+  const bebidas = ['Coca-Cola','Agua Mineral','Cerveza','Vino de la casa','Fanta','Zumo de naranja'];
+  const preciosYDesc = {
+    'Coca-Cola': [2.50, 'Refresco de cola'],
+    'Agua Mineral': [1.80, 'Agua mineral natural 0.5L'],
+    'Cerveza': [2.80, 'Caña de cerveza nacional'],
+    'Vino de la casa': [3.50, 'Copa de vino tinto/blanco/rosado'],
+    'Fanta': [2.50, 'Refresco de naranja/limón'],
+    'Zumo de naranja': [3.20, 'Zumo natural exprimido'],
+  };
 
-  for (const b of bebidas) {
-    const { error } = await supabase.from('menu_items').upsert({
-      restaurant_id: 'al-punto-rivas',
-      category: 'Bebidas',
-      name: b.name,
-      description: b.description,
-      price: b.price,
-      price_type: 'por unidad',
-      allergens: [],
-      available: true,
-      source: 'manual'
-    }, { onConflict: 'restaurant_id,name' });
-    results.push({ step: `bebida_${b.name}`, error: error?.message || null });
+  for (const name of bebidas) {
+    const [price, description] = preciosYDesc[name];
+    // Verificar si ya existe
+    const { data: existing } = await supabase.from('menu_items')
+      .select('id').eq('restaurant_id', 'al-punto-rivas').eq('name', name).maybeSingle();
+    
+    if (!existing) {
+      const { error } = await supabase.from('menu_items').insert({
+        restaurant_id: 'al-punto-rivas',
+        category: 'Bebidas',
+        name,
+        description,
+        price,
+        price_type: 'por unidad',
+        allergens: [],
+        available: true,
+        source: 'manual'
+      });
+      results.push({ step: `bebida_${name}`, error: error?.message || null });
+    } else {
+      results.push({ step: `bebida_${name}`, status: 'ya_existe' });
+    }
   }
 
   return res.status(200).json({ ok: true, results });
