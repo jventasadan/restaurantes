@@ -1,6 +1,6 @@
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY || '';
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,12 +14,12 @@ export default async function handler(req, res) {
 
     const systemPrompt = `Eres un analizador de cartas de restaurante. Devuelve SOLO un JSON con este formato:
 {"menu_items":[{"category":"Entrantes","name":"nombre","description":"desc o null","price":0.00,"price_type":"por unidad","allergens":[],"available":true,"notes":null}]}
-No inventes información. Devuelve SOLO el JSON válido.`;
+No inventes informacion. Devuelve SOLO el JSON valido.`;
 
     let content = [];
     if (image) {
       content.push({ type: "image", source: { type: "base64", media_type: image_type || "image/jpeg", data: image } });
-      content.push({ type: "text", text: "Analiza esta página del menú y extrae todos los platos." });
+      content.push({ type: "text", text: "Analiza esta pagina del menu y extrae todos los platos." });
     } else {
       content.push({ type: "text", text: `Analiza el siguiente texto de la carta:\n\n${text}` });
     }
@@ -36,7 +36,6 @@ No inventes información. Devuelve SOLO el JSON válido.`;
         max_tokens: 4096,
         system: systemPrompt,
         messages: [{ role: "user", content }],
-        temperature: 0.1,
       }),
     });
 
