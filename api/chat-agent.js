@@ -1,9 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY || '';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -12,27 +8,64 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  const supabaseUrl = process.env.SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY || '';
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return res.status(500).json({ error: 'Supabase no configurado' });
+  }
+
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     const { restaurant_id, table_id, session_id, message, history = [] } = req.body;
 
     if (!restaurant_id || !table_id || !session_id || !message) {
-      return res.status(400).json({ error: "Faltan parametros requeridos" });
+      return res.status(400).json({ error: "Faltan parametros: restaurant_id, table_id, session_id, message" });
     }
 
+    // Obtener restaurante
     const { data: restaurant, error: rError } = await supabase
       .from('restaurants').select('*').eq('restaurant_id', restaurant_id).single();
-    if (rError || !restaurant) return res.status(404).json({ error: "Restaurante no encontrado" });
+    if (rError || !restaurant) {
+      return res.status(404).json({ error: `Restaurante no encontrado: ${restaurant_id}` });
+    }
 
+    // Obtener mesa
     const { data: table, error: tError } = await supabase
       .from('tables').select('*').eq('table_id', table_id).eq('restaurant_id', restaurant_id).single();
-    if (tError || !table) return res.status(404).json({ error: "Mesa no encontrada" });
+    if (tError || !table) {
+      return res.status(404).json({ error: `Mesa no encontrada: ${table_id}` });
+    }
 
-    const { data: session, error: sError } = await supabase
-      .from('sessions').select('*').eq('session_id', session_id).single();
-    if (sError || !session) return res.status(404).json({ error: "Sesion no encontrada" });
+    // Obtener sesion - si no existe, crearla
+    let session;
+    const { data: existingSession, error: sError } = await supabase
+      .from('sessions').select('*').eq('session_id', session_id).maybeSingle();
 
+    if (!existingSession) {
+      // Crear sesion nueva
+      const { data: newSession, error: createError } = await supabase
+        .from('sessions')
+        .insert({
+          session_id,
+          table_id,
+          restaurant_id,
+          status: 'active',
+          waiter_requested: false,
+          orders: []
+        })
+        .select().single();
+      if (createError) {
+        return res.status(500).json({ error: `Error creando sesion: ${createError.message}` });
+      }
+      session = newSession;
+    } else {
+      session = existingSession;
+    }
+
+    // Obtener carta
     const { data: menuItems, error: mError } = await supabase
       .from('menu_items').select('*').eq('restaurant_id', restaurant_id).eq('available', true);
     if (mError) return res.status(500).json({ error: "Error al consultar la carta" });
@@ -49,23 +82,35 @@ export default async function handler(req, res) {
       { name: "request_bill", description: "Pedir cuenta.", input_schema: { type: "object", properties: {} } }
     ];
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "x-api-key": anthropicApiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1024, system: systemPrompt, messages: [...history, { role: "user", content: message }], tools }),
+      headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [...history, { role: "user", content: message }],
+        tools
+      }),
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
+    if (!claudeResponse.ok) {
+      const errText = await claudeResponse.text();
       return res.status(502).json({ error: "Error Claude API: " + errText });
     }
 
-    const claudeResult = await response.json();
+    const claudeResult = await claudeResponse.json();
     const replyText = claudeResult.content.find(c => c.type === 'text')?.text || "";
     const toolUse = claudeResult.content.find(c => c.type === 'tool_use');
     const action = toolUse ? { name: toolUse.name, input: toolUse.input, id: toolUse.id } : null;
 
-    await supabase.from('sessions').update({ last_interaction: new Date().toISOString() }).eq('session_id', session_id);
+    await supabase.from('sessions')
+      .update({ last_interaction: new Date().toISOString() })
+      .eq('session_id', session_id);
 
     return res.status(200).json({
       reply: replyText,
