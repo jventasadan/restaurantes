@@ -8,73 +8,75 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const supabaseUrl = process.env.SUPABASE_URL || '';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  // Intentar con service_role primero, si no existe usar anon key
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY 
+    || process.env.VITE_SUPABASE_ANON_KEY 
+    || '';
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY || '';
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({ error: 'Supabase no configurado' });
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ 
+      error: 'Config error', 
+      url: !!supabaseUrl, 
+      key: !!supabaseKey,
+      envKeys: Object.keys(process.env).filter(k => k.includes('SUPA') || k.includes('ANTH'))
+    });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     const { restaurant_id, table_id, session_id, message, history = [] } = req.body;
 
     if (!restaurant_id || !table_id || !session_id || !message) {
-      return res.status(400).json({ error: "Faltan parametros: restaurant_id, table_id, session_id, message" });
+      return res.status(400).json({ error: "Faltan parametros" });
     }
 
     // Obtener restaurante
     const { data: restaurant, error: rError } = await supabase
       .from('restaurants').select('*').eq('restaurant_id', restaurant_id).single();
+    
     if (rError || !restaurant) {
-      return res.status(404).json({ error: `Restaurante no encontrado: ${restaurant_id}` });
+      // Debug: listar todos los restaurantes para ver qué hay
+      const { data: allRests } = await supabase.from('restaurants').select('restaurant_id');
+      return res.status(404).json({ 
+        error: `Restaurante no encontrado: ${restaurant_id}`,
+        available: allRests?.map(r => r.restaurant_id) || [],
+        supabaseError: rError?.message
+      });
     }
 
     // Obtener mesa
     const { data: table, error: tError } = await supabase
       .from('tables').select('*').eq('table_id', table_id).eq('restaurant_id', restaurant_id).single();
-    if (tError || !table) {
-      return res.status(404).json({ error: `Mesa no encontrada: ${table_id}` });
-    }
+    if (tError || !table) return res.status(404).json({ error: `Mesa no encontrada: ${table_id}` });
 
-    // Obtener sesion - si no existe, crearla
+    // Obtener o crear sesión
     let session;
-    const { data: existingSession, error: sError } = await supabase
+    const { data: existingSession } = await supabase
       .from('sessions').select('*').eq('session_id', session_id).maybeSingle();
 
     if (!existingSession) {
-      // Crear sesion nueva
       const { data: newSession, error: createError } = await supabase
         .from('sessions')
-        .insert({
-          session_id,
-          table_id,
-          restaurant_id,
-          status: 'active',
-          waiter_requested: false,
-          orders: []
-        })
+        .insert({ session_id, table_id, restaurant_id, status: 'active', waiter_requested: false, orders: [] })
         .select().single();
-      if (createError) {
-        return res.status(500).json({ error: `Error creando sesion: ${createError.message}` });
-      }
+      if (createError) return res.status(500).json({ error: `Error creando sesion: ${createError.message}` });
       session = newSession;
     } else {
       session = existingSession;
     }
 
     // Obtener carta
-    const { data: menuItems, error: mError } = await supabase
+    const { data: menuItems } = await supabase
       .from('menu_items').select('*').eq('restaurant_id', restaurant_id).eq('available', true);
-    if (mError) return res.status(500).json({ error: "Error al consultar la carta" });
 
-    const menuFormatted = menuItems.map(item =>
+    const menuFormatted = (menuItems || []).map(item =>
       `- ${item.name} (${item.category}): ${item.price}EUR. ${item.description || ''}. Alergenos: ${item.allergens?.join(', ') || 'ninguno'}.`
     ).join('\n');
 
-    const systemPrompt = `Eres ${restaurant.assistant_name}, el camarero virtual de ${restaurant.name} en ${restaurant.location}. Tu unico restaurante es ${restaurant.name}. Tu personalidad: ${restaurant.assistant_personality}. Carta: ${menuFormatted}. Cliente en ${table.name}. Pedido actual: ${JSON.stringify(session.orders)}. Responde siempre en español. Pregunta punto de carne. Arroces minimo 2 personas. ${restaurant.restrictions || ''}`;
+    const systemPrompt = `Eres ${restaurant.assistant_name}, el camarero virtual de ${restaurant.name} en ${restaurant.location}. Tu personalidad: ${restaurant.assistant_personality}. Carta: ${menuFormatted}. Cliente en ${table.name}. Pedido actual: ${JSON.stringify(session.orders)}. Responde siempre en español. Pregunta punto de carne. Arroces minimo 2 personas. ${restaurant.restrictions || ''}`;
 
     const tools = [
       { name: "update_cart", description: "Anadir platos a la comanda.", input_schema: { type: "object", properties: { items: { type: "array", items: { type: "object", properties: { name: { type: "string" }, quantity: { type: "integer" }, notes: { type: "string" } }, required: ["name", "quantity"] } } }, required: ["items"] } },
@@ -84,11 +86,7 @@ export default async function handler(req, res) {
 
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      },
+      headers: { "x-api-key": anthropicApiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1024,
@@ -108,9 +106,7 @@ export default async function handler(req, res) {
     const toolUse = claudeResult.content.find(c => c.type === 'tool_use');
     const action = toolUse ? { name: toolUse.name, input: toolUse.input, id: toolUse.id } : null;
 
-    await supabase.from('sessions')
-      .update({ last_interaction: new Date().toISOString() })
-      .eq('session_id', session_id);
+    await supabase.from('sessions').update({ last_interaction: new Date().toISOString() }).eq('session_id', session_id);
 
     return res.status(200).json({
       reply: replyText,
@@ -119,6 +115,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message, stack: error.stack });
   }
 }
