@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Settings, Utensils, QrCode, Upload, Plus, Save, Trash2, Eye, Check, FileText, ToggleLeft, ToggleRight, Edit, X, LogOut, Image } from 'lucide-react';
+import { Settings, Utensils, QrCode, Upload, Plus, Save, Trash2, Eye, Check, FileText, ToggleLeft, ToggleRight, Edit, X, LogOut, Image, AlertTriangle } from 'lucide-react';
 
 function AdminView() {
   const user = JSON.parse(localStorage.getItem('cv_user') || 'null');
-  const [selectedRestId, setSelectedRestId] = useState(user?.restaurant_id || 'al-punto-rivas');
-  const [restaurants, setRestaurants] = useState([]);
+  // Sin desplegable — solo el restaurante del usuario logueado
+  const selectedRestId = user?.restaurant_id || '';
+
   const [restaurant, setRestaurant] = useState({ name: '', assistant_name: '', assistant_personality: '', welcome_message: '', location: '', specialties: '', restrictions: '' });
   const [branding, setBranding] = useState({ logo_url: '', hero_image_url: '', primary_color: '#C8A96E', secondary_color: '#0D0D0D' });
   const [tables, setTables] = useState([]);
@@ -26,20 +27,23 @@ function AdminView() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [msg, setMsg] = useState('');
+  const [showClearPin, setShowClearPin] = useState(false);
+  const [clearPin, setClearPin] = useState('');
   const logoInputRef = useRef(null);
   const heroInputRef = useRef(null);
 
-  useEffect(() => { loadAll(); }, [selectedRestId]);
+  useEffect(() => {
+    if (!selectedRestId) { window.location.href = '/auth'; return; }
+    loadAll();
+  }, []);
 
   const loadAll = async () => {
     setLoading(true);
-    const { data: rests } = await supabase.from('restaurants').select('restaurant_id, name');
-    if (rests) setRestaurants(rests);
     const { data: rest } = await supabase.from('restaurants').select('*').eq('restaurant_id', selectedRestId).single();
     if (rest) setRestaurant(rest);
     const { data: brand } = await supabase.from('restaurant_branding').select('*').eq('restaurant_id', selectedRestId).single();
     if (brand) setBranding(brand);
-    const { data: tbls } = await supabase.from('tables').select('*').eq('restaurant_id', selectedRestId).order('name');
+    const { data: tbls } = await supabase.from('tables').select('*').eq('restaurant_id', selectedRestId).order('zone').order('name');
     if (tbls) setTables(tbls);
     const { data: items } = await supabase.from('menu_items').select('*').eq('restaurant_id', selectedRestId).order('category').order('name');
     if (items) setMenuItems(items);
@@ -48,7 +52,7 @@ function AdminView() {
 
   const showMsg = (m, isError = false) => { setMsg({ text: m, error: isError }); setTimeout(() => setMsg(''), 3500); };
 
-  // Upload via función serverless (usa service_role en el servidor)
+  // Upload via serverless (service_role en servidor)
   const uploadImageViaServer = async (file, name, setUploading) => {
     setUploading(true);
     try {
@@ -68,29 +72,19 @@ function AdminView() {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
   const handleLogoUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const url = await uploadImageViaServer(file, 'logo', setUploadingLogo);
-      setBranding(b => ({ ...b, logo_url: url }));
-      showMsg('Logo subido ✓');
-    } catch(err) { showMsg('Error al subir logo: ' + err.message, true); }
+    const file = e.target.files[0]; if (!file) return;
+    try { const url = await uploadImageViaServer(file, 'logo', setUploadingLogo); setBranding(b => ({ ...b, logo_url: url })); showMsg('Logo subido ✓'); }
+    catch(err) { showMsg('Error: ' + err.message, true); }
   };
 
   const handleHeroUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const url = await uploadImageViaServer(file, 'hero', setUploadingHero);
-      setBranding(b => ({ ...b, hero_image_url: url }));
-      showMsg('Foto de portada subida ✓');
-    } catch(err) { showMsg('Error al subir portada: ' + err.message, true); }
+    const file = e.target.files[0]; if (!file) return;
+    try { const url = await uploadImageViaServer(file, 'hero', setUploadingHero); setBranding(b => ({ ...b, hero_image_url: url })); showMsg('Portada subida ✓'); }
+    catch(err) { showMsg('Error: ' + err.message, true); }
   };
 
   const saveBranding = async () => {
@@ -115,11 +109,11 @@ function AdminView() {
   };
 
   const addMenuItem = async () => {
-    if (!newItem.name.trim() || !newItem.price) { showMsg('Nombre y precio son obligatorios', true); return; }
+    if (!newItem.name.trim() || !newItem.price) { showMsg('Nombre y precio obligatorios', true); return; }
     const allergensList = newItem.allergens ? newItem.allergens.split(',').map(a => a.trim().toLowerCase()).filter(Boolean) : [];
     const { error } = await supabase.from('menu_items').insert({ ...newItem, restaurant_id: selectedRestId, price: parseFloat(newItem.price), allergens: allergensList, source: 'manual' });
     if (!error) { setNewItem({ name: '', category: 'Entrantes', description: '', price: '', price_type: 'por ración', allergens: '', available: true, notes: '' }); loadAll(); showMsg('Plato añadido ✓'); }
-    else showMsg('Error al añadir plato', true);
+    else showMsg('Error al añadir: ' + error.message, true);
   };
 
   const saveEditItem = async () => {
@@ -127,20 +121,30 @@ function AdminView() {
     const allergensList = typeof editItem.allergens === 'string'
       ? editItem.allergens.split(',').map(a => a.trim().toLowerCase()).filter(Boolean)
       : editItem.allergens || [];
-    const { error } = await supabase.from('menu_items').update({ ...editItem, price: parseFloat(editItem.price), allergens: allergensList }).eq('id', editItem.id);
+    const { error } = await supabase.from('menu_items').update({ name: editItem.name, description: editItem.description, category: editItem.category, price: parseFloat(editItem.price), price_type: editItem.price_type, allergens: allergensList, available: editItem.available, notes: editItem.notes }).eq('id', editItem.id);
     if (!error) { setEditItem(null); loadAll(); showMsg('Plato actualizado ✓'); }
-    else showMsg('Error al guardar', true);
+    else showMsg('Error: ' + error.message, true);
   };
 
   const deleteMenuItem = async (id) => {
     if (!confirm('¿Eliminar este plato?')) return;
-    await supabase.from('menu_items').delete().eq('id', id);
-    loadAll();
+    const { error } = await supabase.from('menu_items').delete().eq('id', id);
+    if (!error) { loadAll(); showMsg('Plato eliminado ✓'); }
+    else showMsg('Error al borrar: ' + error.message, true);
   };
 
   const toggleAvailable = async (item) => {
     await supabase.from('menu_items').update({ available: !item.available }).eq('id', item.id);
     loadAll();
+  };
+
+  const clearAllMenu = async () => {
+    if (clearPin !== '1234') { showMsg('PIN incorrecto', true); setClearPin(''); return; }
+    if (!confirm('¿Borrar TODA la carta? Esta acción no se puede deshacer.')) { setClearPin(''); setShowClearPin(false); return; }
+    const { error } = await supabase.from('menu_items').delete().eq('restaurant_id', selectedRestId);
+    if (!error) { loadAll(); showMsg('Carta borrada completamente'); }
+    else showMsg('Error: ' + error.message, true);
+    setClearPin(''); setShowClearPin(false);
   };
 
   const getQrImageUrl = (tableId) => {
@@ -151,8 +155,7 @@ function AdminView() {
   const getTableUrl = (tableId) => `${window.location.origin}/mesa?r=${selectedRestId}&t=${tableId}`;
 
   const handleImageFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target.result);
@@ -163,12 +166,9 @@ function AdminView() {
     if (!pdfText.trim() && !imagePreview) return;
     setImporting(true); setParsedItems([]);
     try {
-      let body;
-      if (imagePreview && imageFile) {
-        body = { image: imagePreview.split(',')[1], image_type: imageFile.type };
-      } else {
-        body = { text: pdfText };
-      }
+      const body = imagePreview && imageFile
+        ? { image: imagePreview.split(',')[1], image_type: imageFile.type }
+        : { text: pdfText };
       const res = await fetch('/api/pdf-parser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error('Error HTTP ' + res.status);
       const data = await res.json();
@@ -189,25 +189,24 @@ function AdminView() {
   };
 
   const logout = () => { localStorage.removeItem('cv_user'); window.location.href = '/auth'; };
+
   const categories = ['Entrantes', 'Arroces', 'Carnes', 'Pescados', 'Postres', 'Bebidas', 'Menú del Día', 'Asados', 'General'];
   const menuByCategory = menuItems.reduce((acc, item) => { if (!acc[item.category]) acc[item.category] = []; acc[item.category].push(item); return acc; }, {});
+  // Dividir mesas por zona
+  const tablesBySalon = tables.filter(t => t.zone === 'interior' || t.zone === 'salon' || !t.zone);
+  const tablesByTerraza = tables.filter(t => t.zone === 'terraza');
+  const tablesOther = tables.filter(t => t.zone && t.zone !== 'interior' && t.zone !== 'salon' && t.zone !== 'terraza');
 
   if (loading) return <div style={{ minHeight:'100vh', background:'#0D0D0D', display:'flex', alignItems:'center', justifyContent:'center', color:'#C8A96E', fontFamily:'Inter,sans-serif' }}>Cargando...</div>;
 
   return (
     <div style={{ minHeight:'100vh', background:'#0D0D0D', fontFamily:'Inter,sans-serif', color:'#FAF7F2' }}>
-      {/* Header responsive */}
       <header style={{ background:'#1A1A1A', borderBottom:'1px solid rgba(200,169,110,0.15)', padding:'1rem 1.5rem', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
         <div>
           <h1 style={{ fontFamily:'Playfair Display,serif', color:'#C8A96E', fontSize:'clamp(1.1rem,3vw,1.4rem)', margin:0 }}>Panel de Administración</h1>
-          <p style={{ color:'#A6A19A', fontSize:'0.8rem', margin:0 }}>{user?.email} — {selectedRestId}</p>
+          <p style={{ color:'#A6A19A', fontSize:'0.8rem', margin:0 }}>{user?.email} — {restaurant.name || selectedRestId}</p>
         </div>
-        <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', flexWrap:'wrap' }}>
-          {restaurants.length > 1 && (
-            <select value={selectedRestId} onChange={e => setSelectedRestId(e.target.value)} style={{ background:'#0D0D0D', border:'1px solid rgba(255,255,255,0.1)', color:'#FAF7F2', padding:'0.4rem 0.75rem', borderRadius:'6px', fontSize:'0.85rem' }}>
-              {restaurants.map(r => <option key={r.restaurant_id} value={r.restaurant_id}>{r.name}</option>)}
-            </select>
-          )}
+        <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
           <a href="/caja" style={{ padding:'0.5rem 1rem', background:'rgba(200,169,110,0.1)', border:'1px solid rgba(200,169,110,0.3)', borderRadius:'6px', color:'#C8A96E', textDecoration:'none', fontSize:'0.85rem' }}>Caja</a>
           <button onClick={logout} style={{ padding:'0.5rem 0.75rem', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'6px', color:'#A6A19A', cursor:'pointer', fontSize:'0.85rem', display:'flex', alignItems:'center', gap:'0.3rem' }}>
             <LogOut size={13}/> Salir
@@ -217,7 +216,6 @@ function AdminView() {
 
       {msg && <div style={{ padding:'0.75rem 1.5rem', background: msg.error ? 'rgba(192,112,112,0.15)' : 'rgba(142,155,119,0.15)', color: msg.error ? '#C07070' : '#8E9B77', fontSize:'0.9rem', textAlign:'center' }}>{msg.text}</div>}
 
-      {/* Tabs */}
       <div style={{ background:'#1A1A1A', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'0 1rem', display:'flex', gap:'0', overflowX:'auto' }}>
         {[['branding','⚙️ Config'],['tables','📍 Mesas'],['menu','🍽️ Carta'],['pdf','📄 PDF']].map(([tab, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding:'0.875rem 1rem', background:'none', border:'none', borderBottom: activeTab===tab ? '2px solid #C8A96E' : '2px solid transparent', color: activeTab===tab ? '#C8A96E' : '#A6A19A', cursor:'pointer', fontWeight: activeTab===tab ? 600 : 400, fontSize:'0.85rem', whiteSpace:'nowrap' }}>{label}</button>
@@ -226,42 +224,33 @@ function AdminView() {
 
       <div style={{ padding:'1.25rem', maxWidth:'1200px', margin:'0 auto' }}>
 
-        {/* TAB: CONFIGURACIÓN */}
+        {/* CONFIG */}
         {activeTab === 'branding' && (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'1.5rem' }}>
-            {/* Identidad */}
             <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.5rem' }}>
               <h2 style={{ color:'#C8A96E', fontSize:'1.05rem', marginBottom:'1.25rem', marginTop:0 }}>Identidad y Marca</h2>
-              
-              {/* Logo con UPLOAD */}
               <div style={{ marginBottom:'1.25rem' }}>
                 <label style={lblSt}>Logo del Restaurante</label>
                 {branding.logo_url && <img src={branding.logo_url} alt="logo" style={{ height:'60px', objectFit:'contain', marginBottom:'0.5rem', borderRadius:'4px', background:'rgba(255,255,255,0.05)', padding:'4px', display:'block' }} />}
                 <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
-                  <input value={branding.logo_url || ''} onChange={e => setBranding({...branding, logo_url: e.target.value})} placeholder="URL o sube un archivo..." style={{...inputSt, flex:1}} />
-                  <button onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}
-                    style={{ padding:'0.5rem 0.75rem', background:'rgba(200,169,110,0.15)', border:'1px solid rgba(200,169,110,0.3)', borderRadius:'6px', color:'#C8A96E', cursor:'pointer', fontSize:'0.8rem', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:'0.3rem' }}>
+                  <input value={branding.logo_url || ''} onChange={e => setBranding({...branding, logo_url: e.target.value})} placeholder="URL o sube archivo..." style={{...inputSt, flex:1}} />
+                  <button onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo} style={uploadBtnSt}>
                     <Image size={14}/> {uploadingLogo ? '...' : 'Subir'}
                   </button>
                   <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{display:'none'}} />
                 </div>
               </div>
-
-              {/* Foto portada con UPLOAD */}
               <div style={{ marginBottom:'1.25rem' }}>
-                <label style={lblSt}>Foto de Portada</label>
+                <label style={lblSt}>Foto de Portada (fondo del chat de mesa)</label>
                 {branding.hero_image_url && <img src={branding.hero_image_url} alt="hero" style={{ width:'100%', height:'90px', objectFit:'cover', marginBottom:'0.5rem', borderRadius:'6px', display:'block' }} />}
                 <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
-                  <input value={branding.hero_image_url || ''} onChange={e => setBranding({...branding, hero_image_url: e.target.value})} placeholder="URL o sube una imagen..." style={{...inputSt, flex:1}} />
-                  <button onClick={() => heroInputRef.current?.click()} disabled={uploadingHero}
-                    style={{ padding:'0.5rem 0.75rem', background:'rgba(200,169,110,0.15)', border:'1px solid rgba(200,169,110,0.3)', borderRadius:'6px', color:'#C8A96E', cursor:'pointer', fontSize:'0.8rem', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:'0.3rem' }}>
+                  <input value={branding.hero_image_url || ''} onChange={e => setBranding({...branding, hero_image_url: e.target.value})} placeholder="URL o sube imagen..." style={{...inputSt, flex:1}} />
+                  <button onClick={() => heroInputRef.current?.click()} disabled={uploadingHero} style={uploadBtnSt}>
                     <Upload size={14}/> {uploadingHero ? '...' : 'Subir'}
                   </button>
                   <input ref={heroInputRef} type="file" accept="image/*" onChange={handleHeroUpload} style={{display:'none'}} />
                 </div>
               </div>
-
-              {/* Colores */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
                 {[['primary_color','Color Principal'],['secondary_color','Color Fondo']].map(([field, label]) => (
                   <div key={field}>
@@ -274,8 +263,6 @@ function AdminView() {
                 ))}
               </div>
             </div>
-
-            {/* Datos del restaurante */}
             <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.5rem' }}>
               <h2 style={{ color:'#C8A96E', fontSize:'1.05rem', marginBottom:'1.25rem', marginTop:0 }}>Datos del Restaurante</h2>
               {[['name','Nombre'],['location','Ubicación'],['assistant_name','Nombre del Asistente IA']].map(([field, label]) => (
@@ -291,14 +278,13 @@ function AdminView() {
                 </div>
               ))}
             </div>
-
             <button onClick={saveBranding} disabled={saving} style={{ gridColumn:'1/-1', padding:'0.875rem', background: saving ? '#555' : '#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'8px', fontWeight:700, cursor: saving ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
               <Save size={16}/> {saving ? 'Guardando...' : 'Guardar Configuración'}
             </button>
           </div>
         )}
 
-        {/* TAB: MESAS & QR */}
+        {/* MESAS */}
         {activeTab === 'tables' && (
           <div>
             <h2 style={{ color:'#C8A96E', fontSize:'1.2rem', marginBottom:'1.5rem', marginTop:0 }}>Gestión de Mesas y QR</h2>
@@ -306,39 +292,56 @@ function AdminView() {
               <h3 style={{ fontSize:'0.95rem', marginBottom:'1rem', marginTop:0 }}>Añadir Mesa</h3>
               <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>
                 <div><label style={lblSt}>Nombre</label><input value={newTableName} onChange={e => setNewTableName(e.target.value)} placeholder="Mesa 5" style={{...inputSt, width:'140px'}} onKeyPress={e => e.key==='Enter' && addTable()}/></div>
-                <div><label style={lblSt}>Zona</label><select value={newTableZone} onChange={e => setNewTableZone(e.target.value)} style={{...inputSt, width:'120px'}}><option value="interior">Interior</option><option value="terraza">Terraza</option><option value="privado">Privado</option></select></div>
+                <div><label style={lblSt}>Zona</label><select value={newTableZone} onChange={e => setNewTableZone(e.target.value)} style={{...inputSt, width:'120px'}}><option value="interior">Salón</option><option value="terraza">Terraza</option><option value="privado">Privado</option></select></div>
                 <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', paddingBottom:'2px' }}><input type="checkbox" checked={newTableSeasonal} onChange={e => setNewTableSeasonal(e.target.checked)} style={{ width:'15px', height:'15px' }}/><label style={{ fontSize:'0.85rem', color:'#A6A19A' }}>Estacional</label></div>
                 <button onClick={addTable} style={{ padding:'0.6rem 1.25rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'6px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}><Plus size={14}/> Añadir</button>
               </div>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:'1.25rem' }}>
-              {tables.map(tbl => (
-                <div key={tbl.table_id} style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.25rem', textAlign:'center' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.875rem' }}>
-                    <div><div style={{ fontWeight:700 }}>{tbl.name}</div><div style={{ fontSize:'0.75rem', color:'#A6A19A' }}>{tbl.zone} {tbl.seasonal ? '• Estacional' : ''}</div></div>
-                    <button onClick={() => deleteTable(tbl.table_id)} style={{ background:'none', border:'1px solid rgba(192,112,112,0.3)', borderRadius:'6px', padding:'0.3rem', cursor:'pointer', color:'#C07070' }}><Trash2 size={13}/></button>
-                  </div>
-                  <img src={getQrImageUrl(tbl.table_id)} alt={`QR ${tbl.name}`} style={{ width:'130px', height:'130px', borderRadius:'8px', background:'white', padding:'6px' }}/>
-                  <div style={{ marginTop:'0.75rem', display:'flex', flexDirection:'column', gap:'0.4rem' }}>
-                    <a href={getQrImageUrl(tbl.table_id)} download={`QR-${tbl.name}.png`} target="_blank" rel="noreferrer"
-                      style={{ padding:'0.45rem', background:'rgba(200,169,110,0.1)', border:'1px solid rgba(200,169,110,0.3)', borderRadius:'6px', color:'#C8A96E', textDecoration:'none', fontSize:'0.78rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem' }}>
-                      <QrCode size={12}/> Descargar QR
-                    </a>
-                    <a href={getTableUrl(tbl.table_id)} target="_blank" rel="noreferrer"
-                      style={{ padding:'0.4rem', background:'none', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', color:'#A6A19A', textDecoration:'none', fontSize:'0.75rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem' }}>
-                      <Eye size={12}/> Probar enlace
-                    </a>
-                  </div>
+
+            {/* SALÓN */}
+            {tablesBySalon.length > 0 && (
+              <div style={{ marginBottom:'2rem' }}>
+                <h3 style={{ color:'#C8A96E', fontSize:'1rem', borderBottom:'1px solid rgba(200,169,110,0.15)', paddingBottom:'0.5rem', marginBottom:'1rem' }}>🏠 Salón Interior ({tablesBySalon.length} mesas)</h3>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'1rem' }}>
+                  {tablesBySalon.map(tbl => <TableCard key={tbl.table_id} tbl={tbl} getQrImageUrl={getQrImageUrl} getTableUrl={getTableUrl} deleteTable={deleteTable} />)}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* TERRAZA */}
+            {tablesByTerraza.length > 0 && (
+              <div style={{ marginBottom:'2rem' }}>
+                <h3 style={{ color:'#D9A05B', fontSize:'1rem', borderBottom:'1px solid rgba(217,160,91,0.15)', paddingBottom:'0.5rem', marginBottom:'1rem' }}>☀️ Terraza ({tablesByTerraza.length} mesas)</h3>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'1rem' }}>
+                  {tablesByTerraza.map(tbl => <TableCard key={tbl.table_id} tbl={tbl} getQrImageUrl={getQrImageUrl} getTableUrl={getTableUrl} deleteTable={deleteTable} zoneColor="#D9A05B" />)}
+                </div>
+              </div>
+            )}
+
+            {/* OTROS */}
+            {tablesOther.length > 0 && (
+              <div style={{ marginBottom:'2rem' }}>
+                <h3 style={{ color:'#A6A19A', fontSize:'1rem', borderBottom:'1px solid rgba(166,161,154,0.15)', paddingBottom:'0.5rem', marginBottom:'1rem' }}>📍 Otras zonas ({tablesOther.length} mesas)</h3>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'1rem' }}>
+                  {tablesOther.map(tbl => <TableCard key={tbl.table_id} tbl={tbl} getQrImageUrl={getQrImageUrl} getTableUrl={getTableUrl} deleteTable={deleteTable} zoneColor="#A6A19A" />)}
+                </div>
+              </div>
+            )}
+
+            {tables.length === 0 && <p style={{ color:'#A6A19A', textAlign:'center', padding:'2rem' }}>No hay mesas. Añade la primera mesa arriba.</p>}
           </div>
         )}
 
-        {/* TAB: CARTA */}
+        {/* CARTA */}
         {activeTab === 'menu' && (
           <div>
-            <h2 style={{ color:'#C8A96E', fontSize:'1.2rem', marginBottom:'1.5rem', marginTop:0 }}>Carta ({menuItems.length} platos)</h2>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem', flexWrap:'wrap', gap:'0.75rem' }}>
+              <h2 style={{ color:'#C8A96E', fontSize:'1.2rem', margin:0 }}>Carta ({menuItems.length} platos)</h2>
+              <button onClick={() => setShowClearPin(true)} style={{ padding:'0.5rem 1rem', background:'none', border:'1px solid rgba(192,112,112,0.4)', borderRadius:'6px', color:'#C07070', cursor:'pointer', fontSize:'0.82rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                <AlertTriangle size={13}/> Borrar toda la carta
+              </button>
+            </div>
+
             {/* Añadir plato */}
             <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.25rem', marginBottom:'1.5rem' }}>
               <h3 style={{ fontSize:'0.95rem', marginBottom:'1rem', marginTop:0 }}>Añadir Plato</h3>
@@ -349,11 +352,11 @@ function AdminView() {
                 <div><label style={lblSt}>Tipo precio</label><select value={newItem.price_type} onChange={e => setNewItem({...newItem, price_type: e.target.value})} style={inputSt}>{['por ración','por persona','por unidad','precio fijo'].map(t => <option key={t}>{t}</option>)}</select></div>
                 <div style={{ gridColumn:'1/-1' }}><label style={lblSt}>Descripción</label><input value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} placeholder="Descripción..." style={inputSt}/></div>
                 <div><label style={lblSt}>Alérgenos (comas)</label><input value={newItem.allergens} onChange={e => setNewItem({...newItem, allergens: e.target.value})} placeholder="gluten, lacteos" style={inputSt}/></div>
-                <div><label style={lblSt}>Notas internas</label><input value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} placeholder="Notas cocina..." style={inputSt}/></div>
               </div>
               <button onClick={addMenuItem} style={{ marginTop:'1rem', padding:'0.6rem 1.5rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'6px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}><Plus size={14}/> Añadir Plato</button>
             </div>
-            {/* Listado */}
+
+            {/* Listado por categoría */}
             {Object.entries(menuByCategory).map(([cat, items]) => (
               <div key={cat} style={{ marginBottom:'1.5rem' }}>
                 <h3 style={{ color:'#C8A96E', fontSize:'0.9rem', borderBottom:'1px solid rgba(200,169,110,0.15)', paddingBottom:'0.4rem', marginBottom:'0.75rem' }}>{cat} ({items.length})</h3>
@@ -379,7 +382,7 @@ function AdminView() {
           </div>
         )}
 
-        {/* TAB: PDF */}
+        {/* PDF */}
         {activeTab === 'pdf' && (
           <div>
             <h2 style={{ color:'#C8A96E', fontSize:'1.2rem', marginBottom:'0.5rem', marginTop:0 }}>Importar Carta desde PDF / Imagen</h2>
@@ -412,10 +415,7 @@ function AdminView() {
                   {parsedItems.map((item, idx) => (
                     <div key={idx} style={{ display:'flex', alignItems:'center', gap:'0.75rem', background:'#0D0D0D', borderRadius:'6px', padding:'0.625rem 0.75rem' }}>
                       <input type="checkbox" checked={item.selected} onChange={e => setParsedItems(prev => prev.map((p,i) => i===idx ? {...p, selected: e.target.checked} : p))} style={{ width:'15px', height:'15px', flexShrink:0 }}/>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontWeight:600, fontSize:'0.88rem' }}>{item.name}</div>
-                        <div style={{ fontSize:'0.75rem', color:'#A6A19A' }}>{item.category} — {item.description || 'Sin descripción'}</div>
-                      </div>
+                      <div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:'0.88rem' }}>{item.name}</div><div style={{ fontSize:'0.75rem', color:'#A6A19A' }}>{item.category}</div></div>
                       <div style={{ fontWeight:700, color:'#C8A96E' }}>{parseFloat(item.price||0).toFixed(2)}€</div>
                     </div>
                   ))}
@@ -442,7 +442,7 @@ function AdminView() {
                 <div><label style={lblSt}>Precio (€)</label><input type="number" step="0.01" value={editItem.price||''} onChange={e => setEditItem({...editItem, price: e.target.value})} style={inputSt}/></div>
                 <div><label style={lblSt}>Tipo precio</label><select value={editItem.price_type||''} onChange={e => setEditItem({...editItem, price_type: e.target.value})} style={inputSt}>{['por ración','por persona','por unidad','precio fijo'].map(t => <option key={t}>{t}</option>)}</select></div>
               </div>
-              <div><label style={lblSt}>Alérgenos (comas)</label><input value={typeof editItem.allergens === 'string' ? editItem.allergens : (editItem.allergens||[]).join(', ')} onChange={e => setEditItem({...editItem, allergens: e.target.value})} placeholder="gluten, lacteos" style={inputSt}/></div>
+              <div><label style={lblSt}>Alérgenos (comas)</label><input value={typeof editItem.allergens === 'string' ? editItem.allergens : (editItem.allergens||[]).join(', ')} onChange={e => setEditItem({...editItem, allergens: e.target.value})} style={inputSt}/></div>
               <div><label style={lblSt}>Notas internas</label><input value={editItem.notes||''} onChange={e => setEditItem({...editItem, notes: e.target.value})} style={inputSt}/></div>
               <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                 <input type="checkbox" id="avail" checked={editItem.available} onChange={e => setEditItem({...editItem, available: e.target.checked})} style={{ width:'15px', height:'15px' }}/>
@@ -451,7 +451,23 @@ function AdminView() {
             </div>
             <div style={{ display:'flex', gap:'0.75rem', marginTop:'1.5rem' }}>
               <button onClick={() => setEditItem(null)} style={{ flex:1, padding:'0.75rem', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#A6A19A', cursor:'pointer' }}>Cancelar</button>
-              <button onClick={saveEditItem} style={{ flex:1, padding:'0.75rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer' }}>Guardar Cambios</button>
+              <button onClick={saveEditItem} style={{ flex:1, padding:'0.75rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer' }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal PIN borrar carta */}
+      {showClearPin && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'1rem' }}>
+          <div style={{ background:'#1A1A1A', border:'1px solid rgba(192,112,112,0.3)', borderRadius:'12px', padding:'2rem', width:'100%', maxWidth:'360px', textAlign:'center' }}>
+            <AlertTriangle size={40} style={{ color:'#C07070', margin:'0 auto 1rem', display:'block' }}/>
+            <h3 style={{ color:'#C07070', margin:'0 0 0.5rem' }}>Borrar toda la carta</h3>
+            <p style={{ color:'#A6A19A', fontSize:'0.85rem', margin:'0 0 1.5rem' }}>Esta acción borrará <strong>todos los platos</strong> permanentemente. Introduce el PIN para confirmar.</p>
+            <input type="password" value={clearPin} onChange={e => setClearPin(e.target.value)} placeholder="PIN (1234)" maxLength={4} style={{...inputSt, textAlign:'center', fontSize:'1.5rem', letterSpacing:'0.5rem', marginBottom:'1rem'}} onKeyPress={e => e.key==='Enter' && clearAllMenu()} autoFocus/>
+            <div style={{ display:'flex', gap:'0.75rem' }}>
+              <button onClick={() => { setShowClearPin(false); setClearPin(''); }} style={{ flex:1, padding:'0.75rem', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#A6A19A', cursor:'pointer' }}>Cancelar</button>
+              <button onClick={clearAllMenu} style={{ flex:1, padding:'0.75rem', background:'#C07070', color:'#fff', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer' }}>Borrar todo</button>
             </div>
           </div>
         </div>
@@ -460,8 +476,35 @@ function AdminView() {
   );
 }
 
+// Componente tabla card
+function TableCard({ tbl, getQrImageUrl, getTableUrl, deleteTable, zoneColor = '#C8A96E' }) {
+  return (
+    <div style={{ background:'#1A1A1A', border:`1px solid rgba(255,255,255,0.06)`, borderRadius:'12px', padding:'1.25rem', textAlign:'center' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.875rem' }}>
+        <div style={{ textAlign:'left' }}>
+          <div style={{ fontWeight:700 }}>{tbl.name}</div>
+          <div style={{ fontSize:'0.72rem', color: zoneColor }}>{tbl.zone === 'interior' ? 'Salón' : tbl.zone || 'Sin zona'} {tbl.seasonal ? '• Estacional' : ''}</div>
+        </div>
+        <button onClick={() => deleteTable(tbl.table_id)} style={{ background:'none', border:'1px solid rgba(192,112,112,0.3)', borderRadius:'6px', padding:'0.3rem', cursor:'pointer', color:'#C07070' }}><Trash2 size={13}/></button>
+      </div>
+      <img src={getQrImageUrl(tbl.table_id)} alt={`QR ${tbl.name}`} style={{ width:'120px', height:'120px', borderRadius:'8px', background:'white', padding:'6px' }}/>
+      <div style={{ marginTop:'0.75rem', display:'flex', flexDirection:'column', gap:'0.4rem' }}>
+        <a href={getQrImageUrl(tbl.table_id)} download={`QR-${tbl.name}.png`} target="_blank" rel="noreferrer"
+          style={{ padding:'0.4rem', background:'rgba(200,169,110,0.1)', border:'1px solid rgba(200,169,110,0.3)', borderRadius:'6px', color:'#C8A96E', textDecoration:'none', fontSize:'0.75rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem' }}>
+          <QrCode size={11}/> Descargar QR
+        </a>
+        <a href={getTableUrl(tbl.table_id)} target="_blank" rel="noreferrer"
+          style={{ padding:'0.35rem', background:'none', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', color:'#A6A19A', textDecoration:'none', fontSize:'0.72rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem' }}>
+          <Eye size={11}/> Probar enlace
+        </a>
+      </div>
+    </div>
+  );
+}
+
 const inputSt = { width:'100%', padding:'0.6rem 0.75rem', background:'#0D0D0D', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'6px', color:'#FAF7F2', fontSize:'0.87rem', outline:'none', boxSizing:'border-box', fontFamily:'Inter,sans-serif' };
 const lblSt = { display:'block', fontSize:'0.78rem', color:'#A6A19A', marginBottom:'0.3rem' };
 const iconBtnSt = { background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'6px', padding:'0.35rem', cursor:'pointer', color:'#A6A19A', display:'flex', alignItems:'center', justifyContent:'center' };
+const uploadBtnSt = { padding:'0.5rem 0.75rem', background:'rgba(200,169,110,0.15)', border:'1px solid rgba(200,169,110,0.3)', borderRadius:'6px', color:'#C8A96E', cursor:'pointer', fontSize:'0.8rem', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:'0.3rem' };
 
 export default AdminView;

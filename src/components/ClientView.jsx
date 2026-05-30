@@ -649,7 +649,7 @@ function ClientView() {
           </button>
           <button 
             onClick={requestBill} 
-            disabled={confirmedSubtotal === 0 || session.status === 'cuenta_solicitada'}
+            disabled={session.status === 'cuenta_solicitada'}
             title="Pedir Cuenta" 
             style={{ 
               padding: '0.5rem', 
@@ -657,7 +657,8 @@ function ClientView() {
               width: '38px', 
               height: '38px',
               borderColor: 'rgba(200, 169, 110, 0.4)',
-              color: session.status === 'cuenta_solicitada' ? '#8E9B77' : '#C8A96E'
+              color: session.status === 'cuenta_solicitada' ? '#8E9B77' : '#C8A96E',
+              opacity: session.status === 'cuenta_solicitada' ? 0.5 : 1
             }}
           >
             <Receipt size={16} />
@@ -1005,16 +1006,14 @@ function ClientView() {
                     Cuenta solicitada. El camarero está en camino.
                   </div>
                 ) : (
-                  confirmedSubtotal > 0 && (
-                    <button 
-                      onClick={requestBill}
-                      className="btn"
-                      style={{ width: '100%', padding: '0.9rem', border: '1px solid rgba(200, 169, 110, 0.4)', color: '#C8A96E' }}
-                    >
-                      <Receipt size={18} />
-                      Pedir la Cuenta
-                    </button>
-                  )
+                  <button 
+                    onClick={requestBill}
+                    className="btn"
+                    style={{ width: '100%', padding: '0.9rem', border: '1px solid rgba(200, 169, 110, 0.4)', color: '#C8A96E' }}
+                  >
+                    <Receipt size={18} />
+                    Pedir la Cuenta
+                  </button>
                 )}
               </div>
             </div>

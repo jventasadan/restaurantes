@@ -125,3 +125,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ ok: true, results });
 }
+
+// Este código añade al final del handler existente - NO, mejor crear una función nueva

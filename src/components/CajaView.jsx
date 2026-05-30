@@ -166,23 +166,33 @@ function CajaView() {
           </div>
         )}
 
-        {/* Mapa de calor */}
+        {/* Mapa de mesas dividido por zona */}
         <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'1.25rem' }}>
           <h3 style={{ fontSize:'0.95rem', margin:'0 0 1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}><Map size={16}/> Mapa de Mesas</h3>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:'0.875rem' }}>
-            {tables.map(tbl => {
-              const color = getTableColor(tbl);
-              const s = sessions.find(x => x.table_id === tbl.table_id);
-              return (
-                <div key={tbl.table_id} style={{ border:`1.5px solid ${color}`, borderRadius:'8px', padding:'0.6rem 1rem', minWidth:'100px', textAlign:'center' }}>
-                  <div style={{ fontWeight:600, fontSize:'0.88rem' }}>{tbl.name}</div>
-                  <div style={{ fontSize:'0.68rem', color:'#A6A19A' }}>{tbl.zone === 'interior' ? 'Salón' : 'Terraza'}</div>
-                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:color, margin:'0.4rem auto 0' }}/>
-                  {s && <div style={{ fontSize:'0.65rem', color:'#C8A96E', marginTop:'0.2rem' }}>{s.status === 'cuenta_solicitada' ? 'Pide cuenta' : s.status === 'cuenta_enviada' ? 'Cuenta en mesa' : 'Activa'}</div>}
+          {['interior', 'terraza', 'privado'].map(zona => {
+            const mesasZona = tables.filter(t => (t.zone === zona) || (zona === 'interior' && (!t.zone || t.zone === 'salon')));
+            if (mesasZona.length === 0) return null;
+            const zonaLabel = zona === 'interior' ? '🏠 Salón' : zona === 'terraza' ? '☀️ Terraza' : '🚪 Privado';
+            const zonaColor = zona === 'terraza' ? '#D9A05B' : zona === 'privado' ? '#A6A19A' : '#C8A96E';
+            return (
+              <div key={zona} style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize:'0.8rem', color: zonaColor, fontWeight:600, marginBottom:'0.6rem', borderBottom:`1px solid rgba(255,255,255,0.06)`, paddingBottom:'0.3rem' }}>{zonaLabel}</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'0.75rem' }}>
+                  {mesasZona.map(tbl => {
+                    const color = getTableColor(tbl);
+                    const s = sessions.find(x => x.table_id === tbl.table_id);
+                    return (
+                      <div key={tbl.table_id} style={{ border:`1.5px solid ${color}`, borderRadius:'8px', padding:'0.6rem 1rem', minWidth:'90px', textAlign:'center' }}>
+                        <div style={{ fontWeight:600, fontSize:'0.88rem' }}>{tbl.name}</div>
+                        <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:color, margin:'0.35rem auto 0' }}/>
+                        {s && <div style={{ fontSize:'0.62rem', color:'#C8A96E', marginTop:'0.2rem' }}>{s.status === 'cuenta_solicitada' ? 'Pide cuenta' : s.status === 'cuenta_enviada' ? 'Cuenta en mesa' : 'Activa'}</div>}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
           <div style={{ display:'flex', gap:'1.25rem', marginTop:'1rem', fontSize:'0.75rem', flexWrap:'wrap' }}>
             {[['#8E9B77','Libre'],['#D9A05B','Activa'],['#C07070','Acción pendiente']].map(([c,l]) => (
               <div key={l} style={{ display:'flex', alignItems:'center', gap:'0.35rem' }}><div style={{ width:'8px', height:'8px', borderRadius:'50%', background:c }}/><span style={{ color:'#A6A19A' }}>{l}</span></div>
