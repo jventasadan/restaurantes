@@ -53,26 +53,47 @@ function AdminView() {
 
   const showMsg = (m, isError = false) => { setMsg({ text: m, error: isError }); setTimeout(() => setMsg(''), 3500); };
 
+  // Redimensionar imagen con Canvas antes de subir
+  const resizeImage = (file, maxW, maxH) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxW || height > maxH) {
+          const ratio = Math.min(maxW / width, maxH / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          const reader2 = new FileReader();
+          reader2.onload = e => resolve(e.target.result.split(',')[1]);
+          reader2.readAsDataURL(blob);
+        }, 'image/jpeg', 0.88);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
   // Upload via serverless (service_role en servidor)
   const uploadImageViaServer = async (file, name, setUploading) => {
     setUploading(true);
     try {
-      const reader = new FileReader();
-      return await new Promise((resolve, reject) => {
-        reader.onload = async (ev) => {
-          const base64 = ev.target.result.split(',')[1];
-          const res = await fetch('/api/upload-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64, fileName: name, mimeType: file.type, restaurantId: selectedRestId })
-          });
-          const data = await res.json();
-          if (data.error) reject(new Error(data.error));
-          else resolve(data.url);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      const maxW = name === 'logo' ? 400 : 1200;
+      const maxH = name === 'logo' ? 400 : 800;
+      const base64 = await resizeImage(file, maxW, maxH);
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, fileName: name, mimeType: 'image/jpeg', restaurantId: selectedRestId })
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.url;
     } finally { setUploading(false); }
   };
 

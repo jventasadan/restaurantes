@@ -1,5 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Redimensionar imagen usando Canvas API (disponible en Node 18+)
+// Si sharp no está disponible, subimos sin redimensionar pero hacemos resize en el frontend
+async function resizeImageBuffer(base64, mimeType, maxW, maxH) {
+  try {
+    // Intentar con sharp si está disponible
+    const sharp = await import('sharp').catch(() => null);
+    if (sharp) {
+      const buf = Buffer.from(base64, 'base64');
+      const resized = await sharp.default(buf)
+        .resize(maxW, maxH, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      return { buffer: resized, mime: 'image/jpeg' };
+    }
+  } catch(e) {}
+  // Fallback: devolver original
+  return { buffer: Buffer.from(base64, 'base64'), mime: mimeType };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -17,11 +36,16 @@ export default async function handler(req, res) {
     const { base64, fileName, mimeType, restaurantId } = req.body;
     if (!base64 || !fileName || !restaurantId) return res.status(400).json({ error: 'Faltan parámetros' });
 
-    const buffer = Buffer.from(base64, 'base64');
-    const path = `${restaurantId}/${fileName}-${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
+    // Definir tamaños máximos según tipo
+    const maxW = fileName === 'logo' ? 400 : 1200;
+    const maxH = fileName === 'logo' ? 400 : 800;
 
-    const { data, error } = await supabase.storage.from('assets').upload(path, buffer, {
-      contentType: mimeType,
+    const { buffer, mime } = await resizeImageBuffer(base64, mimeType, maxW, maxH);
+    const ext = mime.split('/')[1] || 'jpg';
+    const path = `${restaurantId}/${fileName}-${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage.from('assets').upload(path, buffer, {
+      contentType: mime,
       upsert: true
     });
     if (error) return res.status(500).json({ error: error.message });
