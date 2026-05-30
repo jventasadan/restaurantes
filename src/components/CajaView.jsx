@@ -56,7 +56,6 @@ function CajaView() {
 
   // Cuenta pagada (cierra la sesión)
   const markCuentaPagada = async (sess) => {
-    if (!confirm(`¿Confirmas que ${sess.tables?.name} ha pagado? Se cerrará la mesa.`)) return;
     await supabase.from('sessions').update({ status: 'closed', last_interaction: new Date().toISOString() }).eq('session_id', sess.session_id);
     loadSessions();
   };

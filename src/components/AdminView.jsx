@@ -29,6 +29,7 @@ function AdminView() {
   const [msg, setMsg] = useState('');
   const [showClearPin, setShowClearPin] = useState(false);
   const [clearPin, setClearPin] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null); // {id, name, type: 'item'|'table'}
   const logoInputRef = useRef(null);
   const heroInputRef = useRef(null);
 
@@ -102,10 +103,8 @@ function AdminView() {
     if (!error) { setNewTableName(''); loadAll(); showMsg('Mesa añadida ✓'); }
   };
 
-  const deleteTable = async (tableId) => {
-    if (!confirm('¿Eliminar esta mesa?')) return;
-    await supabase.from('tables').delete().eq('table_id', tableId);
-    loadAll();
+  const deleteTable = (tableId, tableName) => {
+    setConfirmDelete({ id: tableId, name: tableName, type: 'table' });
   };
 
   const addMenuItem = async () => {
@@ -126,11 +125,22 @@ function AdminView() {
     else showMsg('Error: ' + error.message, true);
   };
 
-  const deleteMenuItem = async (id) => {
-    if (!confirm('¿Eliminar este plato?')) return;
-    const { error } = await supabase.from('menu_items').delete().eq('id', id);
-    if (!error) { loadAll(); showMsg('Plato eliminado ✓'); }
-    else showMsg('Error al borrar: ' + error.message, true);
+  const deleteMenuItem = (id, name) => {
+    setConfirmDelete({ id, name, type: 'item' });
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
+    if (confirmDelete.type === 'item') {
+      const { error } = await supabase.from('menu_items').delete().eq('id', confirmDelete.id);
+      if (!error) { loadAll(); showMsg('Plato eliminado ✓'); }
+      else showMsg('Error al borrar: ' + error.message, true);
+    } else if (confirmDelete.type === 'table') {
+      const { error } = await supabase.from('tables').delete().eq('table_id', confirmDelete.id);
+      if (!error) { loadAll(); showMsg('Mesa eliminada ✓'); }
+      else showMsg('Error al borrar mesa: ' + error.message, true);
+    }
+    setConfirmDelete(null);
   };
 
   const toggleAvailable = async (item) => {
@@ -140,7 +150,7 @@ function AdminView() {
 
   const clearAllMenu = async () => {
     if (clearPin !== '1234') { showMsg('PIN incorrecto', true); setClearPin(''); return; }
-    if (!confirm('¿Borrar TODA la carta? Esta acción no se puede deshacer.')) { setClearPin(''); setShowClearPin(false); return; }
+    // Sin confirm adicional - el PIN ya es suficiente confirmación
     const { error } = await supabase.from('menu_items').delete().eq('restaurant_id', selectedRestId);
     if (!error) { loadAll(); showMsg('Carta borrada completamente'); }
     else showMsg('Error: ' + error.message, true);
@@ -372,7 +382,7 @@ function AdminView() {
                       <div style={{ display:'flex', gap:'0.4rem' }}>
                         <button onClick={() => setEditItem({...item, allergens: Array.isArray(item.allergens) ? item.allergens.join(', ') : item.allergens || ''})} style={iconBtnSt} title="Editar"><Edit size={13}/></button>
                         <button onClick={() => toggleAvailable(item)} style={{...iconBtnSt, color: item.available ? '#8E9B77' : '#C07070'}}>{item.available ? <ToggleRight size={13}/> : <ToggleLeft size={13}/>}</button>
-                        <button onClick={() => deleteMenuItem(item.id)} style={{...iconBtnSt, color:'#C07070', borderColor:'rgba(192,112,112,0.3)'}}><Trash2 size={13}/></button>
+                        <button onClick={() => deleteMenuItem(item.id, item.name)} style={{...iconBtnSt, color:'#C07070', borderColor:'rgba(192,112,112,0.3)'}}><Trash2 size={13}/></button>
                       </div>
                     </div>
                   ))}
@@ -425,6 +435,22 @@ function AdminView() {
           </div>
         )}
       </div>
+
+
+      {/* Modal confirmación borrado */}
+      {confirmDelete && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1001, padding:'1rem' }}>
+          <div style={{ background:'#1A1A1A', border:'1px solid rgba(192,112,112,0.3)', borderRadius:'12px', padding:'1.75rem', width:'100%', maxWidth:'360px', textAlign:'center' }}>
+            <Trash2 size={36} style={{ color:'#C07070', margin:'0 auto 1rem', display:'block' }}/>
+            <h3 style={{ color:'#FAF7F2', margin:'0 0 0.5rem' }}>¿Eliminar {confirmDelete.type === 'item' ? 'plato' : 'mesa'}?</h3>
+            <p style={{ color:'#A6A19A', fontSize:'0.9rem', margin:'0 0 1.5rem' }}><strong style={{color:'#FAF7F2'}}>{confirmDelete.name}</strong><br/>Esta acción no se puede deshacer.</p>
+            <div style={{ display:'flex', gap:'0.75rem' }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ flex:1, padding:'0.75rem', background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'8px', color:'#A6A19A', cursor:'pointer' }}>Cancelar</button>
+              <button onClick={executeDelete} style={{ flex:1, padding:'0.75rem', background:'#C07070', color:'#fff', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer' }}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal edición plato */}
       {editItem && (
@@ -485,7 +511,7 @@ function TableCard({ tbl, getQrImageUrl, getTableUrl, deleteTable, zoneColor = '
           <div style={{ fontWeight:700 }}>{tbl.name}</div>
           <div style={{ fontSize:'0.72rem', color: zoneColor }}>{tbl.zone === 'interior' ? 'Salón' : tbl.zone || 'Sin zona'} {tbl.seasonal ? '• Estacional' : ''}</div>
         </div>
-        <button onClick={() => deleteTable(tbl.table_id)} style={{ background:'none', border:'1px solid rgba(192,112,112,0.3)', borderRadius:'6px', padding:'0.3rem', cursor:'pointer', color:'#C07070' }}><Trash2 size={13}/></button>
+        <button onClick={() => deleteTable(tbl.table_id, tbl.name)} style={{ background:'none', border:'1px solid rgba(192,112,112,0.3)', borderRadius:'6px', padding:'0.3rem', cursor:'pointer', color:'#C07070' }}><Trash2 size={13}/></button>
       </div>
       <img src={getQrImageUrl(tbl.table_id)} alt={`QR ${tbl.name}`} style={{ width:'120px', height:'120px', borderRadius:'8px', background:'white', padding:'6px' }}/>
       <div style={{ marginTop:'0.75rem', display:'flex', flexDirection:'column', gap:'0.4rem' }}>
