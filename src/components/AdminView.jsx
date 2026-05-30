@@ -235,7 +235,7 @@ function AdminView() {
     try {
       if (imagePreview && imageFile) {
         // Imagen: una sola llamada al servidor
-        const res = await fetch('/api/pdf-parser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imagePreview.split(',')[1], image_type: imageFile.type }) });
+        const res = await fetch('/api/analyze-menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imagePreview.split(',')[1], image_type: imageFile.type }) });
         if (!res.ok) throw new Error('Error HTTP ' + res.status);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -248,7 +248,7 @@ function AdminView() {
         const allItems = [];
         for (let i = 0; i < chunks.length; i++) {
           showMsg(`Analizando parte ${i + 1} de ${chunks.length}...`);
-          const res = await fetch('/api/pdf-parser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: chunks[i] }) });
+          const res = await fetch('/api/analyze-menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: chunks[i] }) });
           if (!res.ok) {
             if (res.status === 504) throw new Error(`Timeout en parte ${i+1}. Prueba con menos texto.`);
             throw new Error('Error HTTP ' + res.status);
