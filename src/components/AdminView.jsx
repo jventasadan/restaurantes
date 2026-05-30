@@ -193,18 +193,75 @@ function AdminView() {
     reader.readAsDataURL(file);
   };
 
+  // Limpia el texto de separadores de puntos/guiones antes de enviar a Claude
+  const cleanMenuText = (text) => {
+    return text
+      .split('
+')
+      .map(line => {
+        // Eliminar secuencias de 3+ puntos, guiones o espacios repetidos usados como separador
+        // Ej: "Azpilicueta Crianza………….. 21€" → "Azpilicueta Crianza 21€"
+        return line
+          .replace(/[.·…\-–—]{3,}/g, ' ')   // 3+ puntos/guiones → espacio
+          .replace(/\s{2,}/g, ' ')             // múltiples espacios → uno
+          .trim();
+      })
+      .filter(line => line.length > 0)
+      .join('
+');
+  };
+
+  // Divide texto en chunks de ~1800 chars por líneas completas
+  const splitTextInChunks = (text, maxChars = 1800) => {
+    const lines = text.split('
+');
+    const chunks = [];
+    let current = '';
+    for (const line of lines) {
+      if (current.length + line.length > maxChars && current.length > 0) {
+        chunks.push(current.trim());
+        current = '';
+      }
+      current += line + '
+';
+    }
+    if (current.trim()) chunks.push(current.trim());
+    return chunks;
+  };
+
   const importFromPdf = async () => {
     if (!pdfText.trim() && !imagePreview) return;
     setImporting(true); setParsedItems([]);
     try {
-      const body = imagePreview && imageFile
-        ? { image: imagePreview.split(',')[1], image_type: imageFile.type }
-        : { text: pdfText };
-      const res = await fetch('/api/pdf-parser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error('Error HTTP ' + res.status);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setParsedItems((data.menu_items || []).map(item => ({ ...item, selected: true })));
+      if (imagePreview && imageFile) {
+        // Imagen: una sola llamada al servidor
+        const res = await fetch('/api/pdf-parser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imagePreview.split(',')[1], image_type: imageFile.type }) });
+        if (!res.ok) throw new Error('Error HTTP ' + res.status);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setParsedItems((data.menu_items || []).map(item => ({ ...item, selected: true })));
+        showMsg(`✓ ${data.menu_items?.length || 0} platos detectados`);
+      } else {
+        // Texto largo: limpiar separadores y dividir en chunks
+        const cleanedText = cleanMenuText(pdfText);
+        const chunks = splitTextInChunks(cleanedText, 1800);
+        const allItems = [];
+        for (let i = 0; i < chunks.length; i++) {
+          showMsg(`Analizando parte ${i + 1} de ${chunks.length}...`);
+          const res = await fetch('/api/pdf-parser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: chunks[i] }) });
+          if (!res.ok) {
+            if (res.status === 504) throw new Error(`Timeout en parte ${i+1}. Prueba con menos texto.`);
+            throw new Error('Error HTTP ' + res.status);
+          }
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          allItems.push(...(data.menu_items || []));
+        }
+        // Eliminar duplicados por nombre
+        const unique = allItems.filter((item, idx, arr) => arr.findIndex(x => x.name.toLowerCase() === item.name.toLowerCase()) === idx);
+        setParsedItems(unique.map(item => ({ ...item, selected: true })));
+        showMsg(`✓ ${unique.length} platos detectados en ${chunks.length} partes`);
+      }
     } catch(err) { showMsg('Error al analizar: ' + err.message, true); }
     finally { setImporting(false); }
   };
