@@ -529,13 +529,35 @@ function ClientView() {
   if (mode === 'welcome') {
     return (
       <div className="theme-dark" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0D0D0D' }}>
+        {/* Hero: imagen completa visible, no recortada */}
         <div style={{ 
-          height: '240px', 
-          width: '100%', 
-          backgroundImage: `linear-gradient(to bottom, rgba(13,13,13,0.3), #0D0D0D), url(${branding?.hero_image_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800'})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }} />
+          width: '100%',
+          background: '#111',
+          position: 'relative',
+          overflow: 'hidden',
+          maxHeight: '300px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <img
+            src={branding?.hero_image_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800'}
+            alt="Portada"
+            style={{
+              width: '100%',
+              maxHeight: '300px',
+              objectFit: 'contain',
+              display: 'block'
+            }}
+          />
+          {/* Gradiente inferior para transición */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: '80px',
+            background: 'linear-gradient(to bottom, transparent, #0D0D0D)'
+          }} />
+        </div>
 
         <div style={{ 
           padding: '0 2rem 3rem 2rem', 
