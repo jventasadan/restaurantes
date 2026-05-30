@@ -527,59 +527,48 @@ function ClientView() {
   // MODO: BIENVENIDA (welcome)
   // ----------------------------------------------------
   if (mode === 'welcome') {
+    const hasFondo = !!branding?.hero_image_url;
     return (
-      <div className="theme-dark" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0D0D0D' }}>
-        {/* Hero: imagen completa visible, no recortada */}
-        <div style={{ 
-          width: '100%',
-          background: '#111',
-          position: 'relative',
-          overflow: 'hidden',
-          maxHeight: '300px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <img
-            src={branding?.hero_image_url || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800'}
-            alt="Portada"
-            style={{
-              width: '100%',
-              maxHeight: '300px',
-              objectFit: 'contain',
-              display: 'block'
-            }}
-          />
-          {/* Gradiente inferior para transición */}
+      <div className="theme-dark" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0D0D0D', position: 'relative', overflow: 'hidden' }}>
+        
+        {/* Fondo difuminado si hay hero_image_url */}
+        {hasFondo && (
           <div style={{
-            position: 'absolute',
-            bottom: 0, left: 0, right: 0,
-            height: '80px',
-            background: 'linear-gradient(to bottom, transparent, #0D0D0D)'
+            position: 'fixed', inset: 0, zIndex: 0,
+            backgroundImage: `url(${branding.hero_image_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(18px) brightness(0.25)',
+            transform: 'scale(1.1)'
           }} />
-        </div>
+        )}
+        {/* Overlay oscuro encima */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1, background: hasFondo ? 'rgba(13,13,13,0.55)' : 'transparent' }} />
+
+        {/* Contenido por encima del fondo */}
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         <div style={{ 
-          padding: '0 2rem 3rem 2rem', 
-          marginTop: '-40px', 
+          padding: '3rem 2rem 3rem 2rem', 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
           textAlign: 'center',
           flexGrow: 1
         }}>
+          {/* Logo — siempre visible y bien proporcionado */}
           {branding?.logo_url && (
             <img 
               src={branding.logo_url} 
               alt="Logo" 
               style={{ 
-                width: '90px', 
-                height: '90px', 
-                borderRadius: '50%', 
-                border: '3px solid #C8A96E', 
-                objectFit: 'cover',
-                background: '#1A1A1A',
-                marginBottom: '1.5rem'
+                maxWidth: '200px',
+                maxHeight: '140px',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                marginBottom: '1.75rem',
+                filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.6))'
               }} 
             />
           )}
@@ -619,6 +608,7 @@ function ClientView() {
             </button>
           </div>
         </div>
+        </div>{/* cierre zIndex:2 */}
       </div>
     );
   }
