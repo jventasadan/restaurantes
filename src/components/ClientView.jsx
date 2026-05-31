@@ -588,7 +588,7 @@ function ClientView() {
               style={{ padding: '1rem' }}
             >
               <MessageSquare size={18} />
-              Asistente Conversacional
+              Hablar con Carlos (IA)
             </button>
             <button 
               onClick={() => setMode('menu')} 
@@ -596,7 +596,7 @@ function ClientView() {
               style={{ padding: '1rem', border: '1px solid rgba(200, 169, 110, 0.4)' }}
             >
               <Utensils size={18} />
-              Ver Carta y Pedir
+              Ver Carta y Hacer Pedido
             </button>
             <button 
               onClick={callPhysicalWaiter} 
@@ -781,22 +781,25 @@ function ClientView() {
           </div>
 
           {/* Grilla de Platos */}
-          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {filteredMenuItems.map((item) => (
-              <div key={item.id} className="surface card menu-item-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div key={item.id} className="surface card menu-item-card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.875rem', overflow: 'hidden' }}>
+                {/* Imagen pequeña si existe */}
                 {item.image_url && (
-                  <img src={item.image_url} alt={item.name} className="menu-item-img" style={{ height: '140px' }} />
+                  <img src={item.image_url} alt={item.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
                 )}
-                <div className="menu-item-content" style={{ padding: '1rem' }}>
-                  <div className="menu-item-header">
-                    <h4 style={{ fontSize: '1.05rem', color: '#FAF7F2', fontWeight: 600 }}>{item.name}</h4>
-                    <span className="menu-item-price">{item.price}€</span>
+                {/* Info principal */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
+                    <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0 }}>{item.price}€</span>
                   </div>
-                  <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1rem', color: '#A6A19A', lineHeight: 1.4 }}>
-                    {item.description || 'Sin descripción.'}
-                  </p>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                  {item.description && (
+                    <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      {item.description}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem' }}>
                     {/* Alérgenos */}
                     <div className="allergens-list" style={{ padding: 0, marginTop: 0 }}>
                       {item.allergens && item.allergens.map((alg) => {
@@ -807,7 +810,7 @@ function ClientView() {
                             key={alg} 
                             className="allergen-icon" 
                             title={info.name}
-                            style={{ width: '22px', height: '22px', fontSize: '0.65rem' }}
+                            style={{ width: '20px', height: '20px', fontSize: '0.6rem' }}
                           >
                             {info.label}
                           </span>
