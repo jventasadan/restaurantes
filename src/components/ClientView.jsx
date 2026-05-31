@@ -561,12 +561,18 @@ function ClientView() {
   // Normalizar categorías: las de vino se mapean a "Vinos"
   const normalizeCategory = (cat) => isWineCategory(cat) ? 'Vinos' : cat;
 
-  // Filtrar categorías únicas de platos (con normalización de vinos)
+  // Orden fijo de categorías
+  const CATEGORY_ORDER = ['Entrantes', 'Carnes', 'Arroces', 'Asados', 'Especial para Niños', 'Menú del Día', 'Postres', 'Pescados', 'Bebidas', 'General'];
   const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)))];
-  // Orden: categorías normales, Vinos al final, Todos al final del todo
-  const nonWineCats = uniqueCats.filter(c => c !== 'Vinos');
   const hasWines = menuItems.some(item => isWineCategory(item.category));
-  const categories = [...nonWineCats, ...(hasWines ? ['Vinos'] : []), 'Todos'];
+  // Primero las del orden fijo (si existen), luego las que no estén en la lista, luego Vinos, luego Todos
+  const orderedCats = [
+    ...CATEGORY_ORDER.filter(c => uniqueCats.includes(c)),
+    ...uniqueCats.filter(c => !CATEGORY_ORDER.includes(c) && c !== 'Vinos'),
+    ...(hasWines ? ['Vinos'] : []),
+    'Todos'
+  ];
+  const categories = orderedCats;
 
   const filteredMenuItems = activeCategory === 'Todos'
     ? menuItems
