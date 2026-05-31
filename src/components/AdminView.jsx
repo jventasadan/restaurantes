@@ -230,20 +230,19 @@ function AdminView() {
   };
 
   const callClaude = async (textChunk, imageData, imageType) => {
-    const systemPrompt = `Extrae todos los platos y vinos de esta carta. Devuelve SOLO JSON sin markdown:
-{"menu_items":[{"category":"string","name":"string","description":null,"price":0.00,"price_type":"por unidad","allergens":[],"available":true,"notes":null}]}`;
-    const msgContent = imageData
-      ? [{ type: 'image', source: { type: 'base64', media_type: imageType, data: imageData } }, { type: 'text', text: 'Extrae todos los platos y precios.' }]
-      : [{ type: 'text', text: textChunk }];
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const body = imageData ? { image: imageData, image_type: imageType } : { text: textChunk };
+    const res = await fetch('/api/menu-analyzer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, system: systemPrompt, messages: [{ role: 'user', content: msgContent }] })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
-    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error?.message || 'Error API ' + res.status); }
+    if (!res.ok) {
+      if (res.status === 504) throw new Error('Timeout del servidor. El texto es demasiado largo, divide en partes más pequeñas.');
+      throw new Error('Error ' + res.status);
+    }
     const data = await res.json();
-    const txt = data.content?.find(c => c.type === 'text')?.text || '{}';
-    return JSON.parse(txt.replace(/```json/g,'').replace(/```/g,'').trim());
+    if (data.error) throw new Error(data.error);
+    return data;
   };
 
   const importFromPdf = async () => {
