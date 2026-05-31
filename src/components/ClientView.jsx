@@ -81,14 +81,14 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
           </div>
         </div>
         {/* Imagen derecha — grande y visual */}
-        <div style={{ width: '120px', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: '140px', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
           <img
             src={item.image_url}
             alt={item.name}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
-          {/* degradado para integrar con el fondo */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #1A1A1A 0%, transparent 35%)' }} />
+          {/* degradado muy sutil solo en el borde izquierdo */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #1A1A1A 0%, transparent 18%)' }} />
         </div>
       </div>
     );
