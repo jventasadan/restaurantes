@@ -34,6 +34,70 @@ const ALLERGEN_MAP = {
   apio: { label: 'AP', name: 'Apio' }
 };
 
+// Componente reutilizable de tarjeta de plato
+function MenuItemCard({ item, addToCart, showSubcat }) {
+  const ALLERGEN_MAP_LOCAL = {
+    gluten: { label: 'GL', name: 'Gluten' },
+    lacteos: { label: 'LA', name: 'Lácteos' },
+    pescado: { label: 'PE', name: 'Pescado' },
+    marisco: { label: 'MA', name: 'Marisco' },
+    huevo: { label: 'HU', name: 'Huevo' },
+    'frutos de cascara': { label: 'FR', name: 'Frutos Cáscara' },
+    cacahuetes: { label: 'CA', name: 'Cacahuete' },
+    soja: { label: 'SO', name: 'Soja' },
+    mostaza: { label: 'MO', name: 'Mostaza' },
+    sesamo: { label: 'SE', name: 'Sésamo' },
+    sulfitos: { label: 'SU', name: 'Sulfitos' },
+    altramuces: { label: 'AL', name: 'Altramuces' },
+    moluscos: { label: 'MS', name: 'Moluscos' },
+    apio: { label: 'AP', name: 'Apio' }
+  };
+  return (
+    <div className="surface card menu-item-card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.875rem', overflow: 'hidden' }}>
+      {item.image_url ? (
+        <img src={item.image_url} alt={item.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, marginTop: '2px' }} />
+      ) : (
+        <div style={{ width: '64px', flexShrink: 0 }} />
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+          <div>
+            <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
+            {showSubcat && item.category && (
+              <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
+            )}
+          </div>
+          <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.78rem', fontWeight: 400 }}>/Kg.</span>}
+          </span>
+        </div>
+        {item.description && (
+          <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {item.description}
+          </p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+          <div className="allergens-list" style={{ padding: 0, marginTop: 0 }}>
+            {item.allergens && item.allergens.map((alg) => {
+              const info = ALLERGEN_MAP_LOCAL[alg.toLowerCase().trim()];
+              if (!info) return null;
+              return (
+                <span key={alg} className="allergen-icon" title={info.name} style={{ width: '20px', height: '20px', fontSize: '0.6rem' }}>
+                  {info.label}
+                </span>
+              );
+            })}
+          </div>
+          <button onClick={() => addToCart(item, 1)} className="btn" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px' }}>
+            <Plus size={14} style={{ marginRight: '0.2rem' }} />
+            Añadir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ClientView() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -448,13 +512,17 @@ function ClientView() {
     }
   };
 
-  // Categorías de vino que se agrupan bajo "Vinos"
-  const WINE_CATEGORIES = ['D.O. RIOJA', 'RIBERA DEL DUERO', 'RIBELA DEL DUERO', 'CASTILLA Y LEON', 'CASTILLA Y LEÓN', 'VINOS DE MADRID', 'VINOS BLANCOS', 'VINOS ROSADOS', 'VINOS TINTOS', 'CAVA', 'CHAMPAGNE', 'VINOS'];
-  
+  // Categorías de vino/bebida que se agrupan bajo "Vinos"
+  const WINE_CATEGORY_KEYWORDS = [
+    'VINO', 'RIBERA', 'RIBEIRA', 'RIBELA', 'RIOJA', 'CASTILLA', 'JUMILLA', 'MADRID',
+    'CAVA', 'CHAMPAGNE', 'CHAMPAN', 'PROSECCO', 'SIN ALCOHOL', 'D.O.',
+    'ALBARI', 'RUEDA', 'PENEDES', 'PRIORAT', 'SOMONTANO', 'JEREZ', 'VERDEJO'
+  ];
+
   const isWineCategory = (cat) => {
     if (!cat) return false;
     const upper = cat.toUpperCase().trim();
-    return WINE_CATEGORIES.some(w => upper === w || upper.startsWith('D.O.') || upper.startsWith('RIBERA') || upper.startsWith('RIBEIRA') || upper.startsWith('RIBELA') || upper.startsWith('CASTILLA') || upper.startsWith('VINOS DE'));
+    return WINE_CATEGORY_KEYWORDS.some(kw => upper.includes(kw));
   };
 
   // Normalizar categorías: las de vino se mapean a "Vinos"
@@ -799,65 +867,46 @@ function ClientView() {
           </div>
 
           {/* Grilla de Platos */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {filteredMenuItems.map((item) => (
-              <div key={item.id} className="surface card menu-item-card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.875rem', overflow: 'hidden' }}>
-                {/* Imagen: siempre reserva el mismo espacio para alinear */}
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, marginTop: '2px' }} />
-                ) : (
-                  <div style={{ width: '64px', flexShrink: 0 }} />
-                )}
-                {/* Info principal */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <div>
-                      <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
-                      {activeCategory === 'Vinos' && isWineCategory(item.category) && (
-                        <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
-                      )}
+          {activeCategory === 'Vinos' ? (
+            // Vista Vinos: agrupada por denominación
+            (() => {
+              const wineGroups = filteredMenuItems.reduce((acc, item) => {
+                const cat = item.category || 'Otros';
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(item);
+                return acc;
+              }, {});
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {Object.entries(wineGroups).map(([groupName, groupItems]) => (
+                    <div key={groupName}>
+                      <div style={{ 
+                        fontSize: '0.72rem', 
+                        fontWeight: 700, 
+                        letterSpacing: '0.1em', 
+                        textTransform: 'uppercase', 
+                        color: '#C8A96E', 
+                        borderBottom: '1px solid rgba(200,169,110,0.2)', 
+                        paddingBottom: '0.4rem', 
+                        marginBottom: '0.6rem' 
+                      }}>
+                        {groupName}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {groupItems.map(item => <MenuItemCard key={item.id} item={item} addToCart={addToCart} showSubcat={false} />)}
+                      </div>
                     </div>
-                    <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {item.price}€{item.price_type === 'por kilo' ? '/kg' : ''}
-                    </span>
-                  </div>
-                  {item.description && (
-                    <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                      {item.description}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                    {/* Alérgenos */}
-                    <div className="allergens-list" style={{ padding: 0, marginTop: 0 }}>
-                      {item.allergens && item.allergens.map((alg) => {
-                        const info = ALLERGEN_MAP[alg.toLowerCase().trim()];
-                        if (!info) return null;
-                        return (
-                          <span
-                            key={alg}
-                            className="allergen-icon"
-                            title={info.name}
-                            style={{ width: '20px', height: '20px', fontSize: '0.6rem' }}
-                          >
-                            {info.label}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {/* Botón Añadir */}
-                    <button
-                      onClick={() => addToCart(item, 1)}
-                      className="btn"
-                      style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px' }}
-                    >
-                      <Plus size={14} style={{ marginRight: '0.2rem' }} />
-                      Añadir
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              );
+            })()
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {filteredMenuItems.map((item) => (
+                <MenuItemCard key={item.id} item={item} addToCart={addToCart} showSubcat={false} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
