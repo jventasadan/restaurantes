@@ -196,9 +196,7 @@ function AdminView() {
   // Limpia el texto de separadores de puntos/guiones antes de enviar a Claude
   const cleanMenuText = (text) => {
     return text
-      .split('
-')
-      .map(line => {
+      .split('\n').map(line => {
         // Eliminar secuencias de 3+ puntos, guiones o espacios repetidos usados como separador
         // Ej: "Azpilicueta Crianza………….. 21€" → "Azpilicueta Crianza 21€"
         return line
@@ -207,14 +205,12 @@ function AdminView() {
           .trim();
       })
       .filter(line => line.length > 0)
-      .join('
-');
+      .join('\n');
   };
 
   // Divide texto en chunks de ~1800 chars por líneas completas
   const splitTextInChunks = (text, maxChars = 1800) => {
-    const lines = text.split('
-');
+    const lines = text.split('\n');
     const chunks = [];
     let current = '';
     for (const line of lines) {
@@ -222,8 +218,7 @@ function AdminView() {
         chunks.push(current.trim());
         current = '';
       }
-      current += line + '
-';
+      current += line + '\n';
     }
     if (current.trim()) chunks.push(current.trim());
     return chunks;
