@@ -36,29 +36,67 @@ const ALLERGEN_MAP = {
 
 // Componente reutilizable de tarjeta de plato
 function MenuItemCard({ item, addToCart, showSubcat }) {
-  const ALLERGEN_MAP_LOCAL = {
-    gluten: { label: 'GL', name: 'Gluten' },
-    lacteos: { label: 'LA', name: 'Lácteos' },
-    pescado: { label: 'PE', name: 'Pescado' },
-    marisco: { label: 'MA', name: 'Marisco' },
-    huevo: { label: 'HU', name: 'Huevo' },
-    'frutos de cascara': { label: 'FR', name: 'Frutos Cáscara' },
-    cacahuetes: { label: 'CA', name: 'Cacahuete' },
-    soja: { label: 'SO', name: 'Soja' },
-    mostaza: { label: 'MO', name: 'Mostaza' },
-    sesamo: { label: 'SE', name: 'Sésamo' },
-    sulfitos: { label: 'SU', name: 'Sulfitos' },
-    altramuces: { label: 'AL', name: 'Altramuces' },
-    moluscos: { label: 'MS', name: 'Moluscos' },
-    apio: { label: 'AP', name: 'Apio' }
-  };
+  const hasImage = !!item.image_url;
+
+  // Tarjeta CON foto: imagen grande a la derecha, info a la izquierda
+  if (hasImage) {
+    return (
+      <div style={{
+        position: 'relative',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        background: '#1A1A1A',
+        border: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex',
+        minHeight: '110px',
+      }}>
+        {/* Info izquierda */}
+        <div style={{ flex: 1, padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0, paddingRight: '0.5rem' }}>
+          <div>
+            <h4 style={{ fontSize: '1rem', color: '#FAF7F2', fontWeight: 700, margin: '0 0 0.2rem', lineHeight: 1.25 }}>{item.name}</h4>
+            {showSubcat && item.category && (
+              <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic', display: 'block', marginBottom: '0.2rem' }}>{item.category}</span>
+            )}
+            {item.description && (
+              <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.15rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                {item.description}
+              </p>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ color: '#C8A96E', fontWeight: 800, fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
+              {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
+            </span>
+            <div style={{ display: 'flex', gap: '3px' }}>
+              {(item.allergens || []).map((alg) => {
+                const map = { gluten:'GL', lacteos:'LA', pescado:'PE', marisco:'MA', huevo:'HU', 'frutos de cascara':'FR', cacahuetes:'CA', soja:'SO', mostaza:'MO', sesamo:'SE', sulfitos:'SU', altramuces:'AL', moluscos:'MS', apio:'AP' };
+                const label = map[alg.toLowerCase().trim()];
+                if (!label) return null;
+                return <span key={alg} title={alg} style={{ width:'18px', height:'18px', borderRadius:'3px', background:'rgba(200,169,110,0.15)', border:'1px solid rgba(200,169,110,0.3)', color:'#C8A96E', fontSize:'0.55rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{label}</span>;
+              })}
+            </div>
+            <button onClick={() => addToCart(item, 1)} className="btn" style={{ marginLeft: 'auto', padding: '0.3rem 0.85rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}>
+              <Plus size={13} style={{ marginRight: '0.2rem' }} /> Añadir
+            </button>
+          </div>
+        </div>
+        {/* Imagen derecha — grande y visual */}
+        <div style={{ width: '120px', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+          <img
+            src={item.image_url}
+            alt={item.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          {/* degradado para integrar con el fondo */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #1A1A1A 0%, transparent 35%)' }} />
+        </div>
+      </div>
+    );
+  }
+
+  // Tarjeta SIN foto: layout limpio horizontal
   return (
-    <div className="surface card menu-item-card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.875rem', overflow: 'hidden' }}>
-      {item.image_url ? (
-        <img src={item.image_url} alt={item.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, marginTop: '2px' }} />
-      ) : (
-        <div style={{ width: '64px', flexShrink: 0 }} />
-      )}
+    <div className="surface card menu-item-card" style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>
@@ -68,7 +106,7 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
             )}
           </div>
           <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.78rem', fontWeight: 400 }}>/Kg.</span>}
+            {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
           </span>
         </div>
         {item.description && (
@@ -77,20 +115,16 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
           </p>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-          <div className="allergens-list" style={{ padding: 0, marginTop: 0 }}>
-            {item.allergens && item.allergens.map((alg) => {
-              const info = ALLERGEN_MAP_LOCAL[alg.toLowerCase().trim()];
-              if (!info) return null;
-              return (
-                <span key={alg} className="allergen-icon" title={info.name} style={{ width: '20px', height: '20px', fontSize: '0.6rem' }}>
-                  {info.label}
-                </span>
-              );
+          <div style={{ display: 'flex', gap: '3px' }}>
+            {(item.allergens || []).map((alg) => {
+              const map = { gluten:'GL', lacteos:'LA', pescado:'PE', marisco:'MA', huevo:'HU', 'frutos de cascara':'FR', cacahuetes:'CA', soja:'SO', mostaza:'MO', sesamo:'SE', sulfitos:'SU', altramuces:'AL', moluscos:'MS', apio:'AP' };
+              const label = map[alg.toLowerCase().trim()];
+              if (!label) return null;
+              return <span key={alg} title={alg} style={{ width:'20px', height:'20px', borderRadius:'3px', background:'rgba(200,169,110,0.15)', border:'1px solid rgba(200,169,110,0.3)', color:'#C8A96E', fontSize:'0.6rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{label}</span>;
             })}
           </div>
           <button onClick={() => addToCart(item, 1)} className="btn" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px' }}>
-            <Plus size={14} style={{ marginRight: '0.2rem' }} />
-            Añadir
+            <Plus size={14} style={{ marginRight: '0.2rem' }} /> Añadir
           </button>
         </div>
       </div>
