@@ -80,15 +80,13 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
             </button>
           </div>
         </div>
-        {/* Imagen derecha — grande y visual */}
-        <div style={{ width: '140px', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+        {/* Imagen derecha — entera, sin recorte ni degradado */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0.5rem 0.75rem 0.5rem 0' }}>
           <img
             src={item.image_url}
             alt={item.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '110px', height: '110px', objectFit: 'contain', borderRadius: '10px', display: 'block', background: 'transparent' }}
           />
-          {/* degradado muy sutil solo en el borde izquierdo */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #1A1A1A 0%, transparent 18%)' }} />
         </div>
       </div>
     );
@@ -550,7 +548,8 @@ function ClientView() {
   const WINE_CATEGORY_KEYWORDS = [
     'VINO', 'RIBERA', 'RIBEIRA', 'RIBELA', 'RIOJA', 'CASTILLA', 'JUMILLA', 'MADRID',
     'CAVA', 'CHAMPAGNE', 'CHAMPAN', 'PROSECCO', 'SIN ALCOHOL', 'D.O.',
-    'ALBARI', 'RUEDA', 'PENEDES', 'PRIORAT', 'SOMONTANO', 'JEREZ', 'VERDEJO'
+    'ALBARI', 'RUEDA', 'PENEDES', 'PRIORAT', 'SOMONTANO', 'JEREZ', 'VERDEJO',
+    'DUERO', 'LEON', 'BIERZO', 'GALICIA', 'NAVARRA', 'ARAGON', 'ANDALUC'
   ];
 
   const isWineCategory = (cat) => {
@@ -563,11 +562,11 @@ function ClientView() {
   const normalizeCategory = (cat) => isWineCategory(cat) ? 'Vinos' : cat;
 
   // Filtrar categorías únicas de platos (con normalización de vinos)
-  const rawCategories = ['Todos', ...new Set(menuItems.map(item => normalizeCategory(item.category)))];
-  // Mantener orden: Todos primero, luego el resto, Vinos al final si existe
-  const nonWineFirstCats = rawCategories.filter(c => c !== 'Todos' && c !== 'Vinos');
+  const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)))];
+  // Orden: categorías normales, Vinos al final, Todos al final del todo
+  const nonWineCats = uniqueCats.filter(c => c !== 'Vinos');
   const hasWines = menuItems.some(item => isWineCategory(item.category));
-  const categories = ['Todos', ...nonWineFirstCats, ...(hasWines ? ['Vinos'] : [])];
+  const categories = [...nonWineCats, ...(hasWines ? ['Vinos'] : []), 'Todos'];
 
   const filteredMenuItems = activeCategory === 'Todos'
     ? menuItems
