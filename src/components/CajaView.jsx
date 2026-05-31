@@ -89,11 +89,18 @@ function CajaView() {
     };
   }, [loadData]);
 
-  // Alarma - detectar nuevas comandas
-  useEffect(() => {
-    const newCount = sessions.reduce((acc, s) => acc + (s.orders || []).filter(o => o.status === 'pending_confirm').length, 0);
+  // Alarma - detectar nuevas comandas Y cuenta solicitada
+  const getAlarmCount = (sess) =>
+    sess.reduce((acc, s) => {
+      const pendingOrders = (s.orders || []).filter(o => o.status === 'pending_confirm').length;
+      const cuentaPendiente = s.status === 'cuenta_solicitada' ? 1 : 0;
+      return acc + pendingOrders + cuentaPendiente;
+    }, 0);
 
-    // Silenciar si no hay comandas nuevas
+  useEffect(() => {
+    const newCount = getAlarmCount(sessions);
+
+    // Silenciar si no hay nada pendiente
     if (newCount === 0) {
       clearInterval(alarmIntervalRef.current);
       alarmIntervalRef.current = null;
@@ -109,14 +116,14 @@ function CajaView() {
       return;
     }
 
-    // Si hay comandas nuevas y no estamos en snooze → activar alarma periódica
+    // Si hay algo pendiente y no estamos en snooze → activar alarma periódica
     if (newCount > 0 && !alarmIntervalRef.current) {
       const ctx = getAudioCtx();
       playAlarm(ctx); // primera vez inmediata
       alarmIntervalRef.current = setInterval(() => {
         const stillInSnooze = snoozedUntil && Date.now() < snoozedUntil;
         if (!stillInSnooze && soundOn) {
-          const currentCount = sessions.reduce((acc, s) => acc + (s.orders || []).filter(o => o.status === 'pending_confirm').length, 0);
+          const currentCount = getAlarmCount(sessions);
           if (currentCount > 0) playAlarm(ctx);
           else { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
         }

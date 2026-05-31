@@ -149,6 +149,7 @@ function ClientView() {
 
   // Estados de la interfaz
   const [mode, setMode] = useState(null); // 'welcome' | 'chat' | 'menu' | 'waiter'
+  const [sessionClosed, setSessionClosed] = useState(false);
   const [activeCategory, setActiveCategory] = useState('Entrantes');
   const [cart, setCart] = useState([]); // [{ item, quantity, notes, status: 'pending' }]
   const [cartOpen, setCartOpen] = useState(false);
@@ -308,9 +309,7 @@ function ClientView() {
         (payload) => {
           setSession(payload.new);
           if (payload.new.status === 'closed') {
-            // Sesión cerrada por caja
-            alert("El camarero ha cerrado la cuenta de la mesa. ¡Gracias por su visita!");
-            navigate('/');
+            setSessionClosed(true);
           }
           if (payload.new.waiter_requested) {
             setMode('waiter');
@@ -631,14 +630,14 @@ function ClientView() {
     return (
       <div className="theme-warm" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '1.5rem', background: '#FAF7F2' }}>
         <div style={{ margin: 'auto', maxWidth: '450px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            borderRadius: '50%', 
-            background: 'rgba(200, 169, 110, 0.1)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'rgba(200, 169, 110, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             color: '#C8A96E',
             margin: '0 auto'
           }}>
@@ -654,11 +653,40 @@ function ClientView() {
             <p style={{ fontSize: '0.85rem' }}><strong>Zona:</strong> {table.zone === 'interior' ? 'Salón Interior' : 'Terraza'}</p>
           </div>
           {confirmedSubtotal > 0 && (
-            <div style={{ marginTop: '1rem', padding: '0.5rem 0', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+            <div style={{ padding: '0.5rem 0', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
               <span style={{ fontSize: '0.9rem' }}>Consumo acumulado: </span>
               <strong style={{ color: '#C8A96E', fontSize: '1.1rem' }}>{confirmedSubtotal.toFixed(2)}€</strong>
             </div>
           )}
+          <button
+            onClick={() => setMode('chat')}
+            style={{ padding: '0.75rem 1.5rem', background: 'none', border: '1px solid rgba(0,0,0,0.15)', borderRadius: '10px', color: '#5C564E', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+          >
+            ← Volver al chat
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // OVERLAY: CUENTA CERRADA
+  // ----------------------------------------------------
+  if (sessionClosed) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '2rem' }}>
+        <div style={{ background: '#1A1A1A', border: '1px solid rgba(200,169,110,0.3)', borderRadius: '16px', padding: '2.5rem 2rem', maxWidth: '380px', width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ fontSize: '3rem' }}>🙏</div>
+          <h2 style={{ color: '#FAF7F2', fontSize: '1.4rem', margin: 0 }}>¡Muchas gracias!</h2>
+          <p style={{ color: '#A6A19A', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
+            El camarero ha cerrado la cuenta de la mesa.<br/>Ha sido un placer atenderos.
+          </p>
+          <button
+            onClick={() => setSessionClosed(false)}
+            style={{ padding: '0.85rem', background: '#C8A96E', color: '#0D0D0D', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: '0.5rem' }}
+          >
+            Aceptar
+          </button>
         </div>
       </div>
     );
