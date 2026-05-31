@@ -9,7 +9,7 @@ function createBeep(ctx, freq = 880, duration = 0.15, volume = 0.4) {
   osc.connect(gain);
   gain.connect(ctx.destination);
   osc.frequency.value = freq;
-  osc.type = 'sine';
+  osc.type = 'square';
   gain.gain.setValueAtTime(volume, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
   osc.start(ctx.currentTime);
@@ -17,10 +17,11 @@ function createBeep(ctx, freq = 880, duration = 0.15, volume = 0.4) {
 }
 
 function playAlarm(ctx) {
-  // Tres beeps ascendentes
-  setTimeout(() => createBeep(ctx, 660, 0.12, 0.35), 0);
-  setTimeout(() => createBeep(ctx, 770, 0.12, 0.35), 160);
-  setTimeout(() => createBeep(ctx, 880, 0.18, 0.45), 320);
+  // Patron doi-doi  doi-doi: 4 pitidos en 2 pares, mas urgente y constante
+  createBeep(ctx, 880, 0.10, 0.5);
+  setTimeout(() => createBeep(ctx, 880, 0.10, 0.5), 130);
+  setTimeout(() => createBeep(ctx, 880, 0.10, 0.5), 380);
+  setTimeout(() => createBeep(ctx, 880, 0.10, 0.5), 510);
 }
 
 function CajaView() {
@@ -119,7 +120,7 @@ function CajaView() {
           if (currentCount > 0) playAlarm(ctx);
           else { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
         }
-      }, 12000); // repetir cada 12 segundos
+      }, 7000); // repetir cada 7 segundos
     }
 
     setLastComandaCount(newCount);
