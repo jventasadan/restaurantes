@@ -448,12 +448,30 @@ function ClientView() {
     }
   };
 
-  // Filtrar categorías únicas de platos
-  const categories = ['Todos', ...new Set(menuItems.map(item => item.category))];
+  // Categorías de vino que se agrupan bajo "Vinos"
+  const WINE_CATEGORIES = ['D.O. RIOJA', 'RIBERA DEL DUERO', 'RIBELA DEL DUERO', 'CASTILLA Y LEON', 'CASTILLA Y LEÓN', 'VINOS DE MADRID', 'VINOS BLANCOS', 'VINOS ROSADOS', 'VINOS TINTOS', 'CAVA', 'CHAMPAGNE', 'VINOS'];
+  
+  const isWineCategory = (cat) => {
+    if (!cat) return false;
+    const upper = cat.toUpperCase().trim();
+    return WINE_CATEGORIES.some(w => upper === w || upper.startsWith('D.O.') || upper.startsWith('RIBERA') || upper.startsWith('RIBEIRA') || upper.startsWith('RIBELA') || upper.startsWith('CASTILLA') || upper.startsWith('VINOS DE'));
+  };
+
+  // Normalizar categorías: las de vino se mapean a "Vinos"
+  const normalizeCategory = (cat) => isWineCategory(cat) ? 'Vinos' : cat;
+
+  // Filtrar categorías únicas de platos (con normalización de vinos)
+  const rawCategories = ['Todos', ...new Set(menuItems.map(item => normalizeCategory(item.category)))];
+  // Mantener orden: Todos primero, luego el resto, Vinos al final si existe
+  const nonWineFirstCats = rawCategories.filter(c => c !== 'Todos' && c !== 'Vinos');
+  const hasWines = menuItems.some(item => isWineCategory(item.category));
+  const categories = ['Todos', ...nonWineFirstCats, ...(hasWines ? ['Vinos'] : [])];
 
   const filteredMenuItems = activeCategory === 'Todos'
     ? menuItems
-    : menuItems.filter(item => item.category === activeCategory);
+    : activeCategory === 'Vinos'
+      ? menuItems.filter(item => isWineCategory(item.category))
+      : menuItems.filter(item => item.category === activeCategory);
 
   // Calcular totales del carrito
   const cartSubtotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.quantity), 0);
@@ -783,32 +801,41 @@ function ClientView() {
           {/* Grilla de Platos */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {filteredMenuItems.map((item) => (
-              <div key={item.id} className="surface card menu-item-card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.875rem', overflow: 'hidden' }}>
-                {/* Imagen pequeña si existe */}
-                {item.image_url && (
-                  <img src={item.image_url} alt={item.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
+              <div key={item.id} className="surface card menu-item-card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.875rem', overflow: 'hidden' }}>
+                {/* Imagen: siempre reserva el mismo espacio para alinear */}
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, marginTop: '2px' }} />
+                ) : (
+                  <div style={{ width: '64px', flexShrink: 0 }} />
                 )}
                 {/* Info principal */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
-                    <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0 }}>{item.price}€</span>
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
+                      {activeCategory === 'Vinos' && isWineCategory(item.category) && (
+                        <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
+                      )}
+                    </div>
+                    <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      {item.price}€{item.price_type === 'por kilo' ? '/kg' : ''}
+                    </span>
                   </div>
                   {item.description && (
                     <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {item.description}
                     </p>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                     {/* Alérgenos */}
                     <div className="allergens-list" style={{ padding: 0, marginTop: 0 }}>
                       {item.allergens && item.allergens.map((alg) => {
                         const info = ALLERGEN_MAP[alg.toLowerCase().trim()];
                         if (!info) return null;
                         return (
-                          <span 
-                            key={alg} 
-                            className="allergen-icon" 
+                          <span
+                            key={alg}
+                            className="allergen-icon"
                             title={info.name}
                             style={{ width: '20px', height: '20px', fontSize: '0.6rem' }}
                           >
@@ -817,9 +844,8 @@ function ClientView() {
                         );
                       })}
                     </div>
-
                     {/* Botón Añadir */}
-                    <button 
+                    <button
                       onClick={() => addToCart(item, 1)}
                       className="btn"
                       style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px' }}

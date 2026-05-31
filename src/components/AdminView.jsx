@@ -83,8 +83,9 @@ function AdminView() {
   const uploadImageViaServer = async (file, name, setUploading) => {
     setUploading(true);
     try {
-      const maxW = name === 'logo' ? 400 : 1200;
-      const maxH = name === 'logo' ? 400 : 800;
+      const isDish = name.startsWith('dish-');
+      const maxW = name === 'logo' ? 400 : isDish ? 600 : 1200;
+      const maxH = name === 'logo' ? 400 : isDish ? 600 : 800;
       const base64 = await resizeImage(file, maxW, maxH);
       const res = await fetch('/api/upload-image', {
         method: 'POST',
@@ -141,9 +142,19 @@ function AdminView() {
     const allergensList = typeof editItem.allergens === 'string'
       ? editItem.allergens.split(',').map(a => a.trim().toLowerCase()).filter(Boolean)
       : editItem.allergens || [];
-    const { error } = await supabase.from('menu_items').update({ name: editItem.name, description: editItem.description, category: editItem.category, price: parseFloat(editItem.price), price_type: editItem.price_type, allergens: allergensList, available: editItem.available, notes: editItem.notes }).eq('id', editItem.id);
+    const { error } = await supabase.from('menu_items').update({ name: editItem.name, description: editItem.description, category: editItem.category, price: parseFloat(editItem.price), price_type: editItem.price_type, allergens: allergensList, available: editItem.available, notes: editItem.notes, image_url: editItem.image_url || null }).eq('id', editItem.id);
     if (!error) { setEditItem(null); loadAll(); showMsg('Plato actualizado ✓'); }
     else showMsg('Error: ' + error.message, true);
+  };
+
+  const handleDishImageUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      showMsg('Subiendo imagen del plato...');
+      const url = await uploadImageViaServer(file, `dish-${editItem.id}`, () => {});
+      setEditItem(ei => ({ ...ei, image_url: url }));
+      showMsg('Imagen subida ✓');
+    } catch(err) { showMsg('Error al subir imagen: ' + err.message, true); }
   };
 
   const deleteMenuItem = (id, name) => {
@@ -437,7 +448,7 @@ function AdminView() {
                 <div><label style={lblSt}>Nombre *</label><input value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} placeholder="Croquetas" style={inputSt}/></div>
                 <div><label style={lblSt}>Categoría</label><select value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})} style={inputSt}>{categories.map(c => <option key={c}>{c}</option>)}</select></div>
                 <div><label style={lblSt}>Precio (€) *</label><input type="number" step="0.01" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} placeholder="12.50" style={inputSt}/></div>
-                <div><label style={lblSt}>Tipo precio</label><select value={newItem.price_type} onChange={e => setNewItem({...newItem, price_type: e.target.value})} style={inputSt}>{['por ración','por persona','por unidad','precio fijo'].map(t => <option key={t}>{t}</option>)}</select></div>
+                <div><label style={lblSt}>Tipo precio</label><select value={newItem.price_type} onChange={e => setNewItem({...newItem, price_type: e.target.value})} style={inputSt}>{['por ración','por persona','por unidad','precio fijo','por kilo'].map(t => <option key={t}>{t}</option>)}</select></div>
                 <div style={{ gridColumn:'1/-1' }}><label style={lblSt}>Descripción</label><input value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} placeholder="Descripción..." style={inputSt}/></div>
                 <div><label style={lblSt}>Alérgenos (comas)</label><input value={newItem.allergens} onChange={e => setNewItem({...newItem, allergens: e.target.value})} placeholder="gluten, lacteos" style={inputSt}/></div>
               </div>
@@ -530,7 +541,6 @@ function AdminView() {
         </div>
       )}
 
-      {/* Modal edición plato */}
       {editItem && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'1rem' }}>
           <div style={{ background:'#1A1A1A', border:'1px solid rgba(200,169,110,0.2)', borderRadius:'12px', padding:'1.5rem', width:'100%', maxWidth:'480px', maxHeight:'90vh', overflowY:'auto' }}>
@@ -543,11 +553,40 @@ function AdminView() {
               <div><label style={lblSt}>Descripción</label><textarea value={editItem.description||''} onChange={e => setEditItem({...editItem, description: e.target.value})} rows={2} style={{...inputSt, resize:'vertical'}}/></div>
               <div><label style={lblSt}>Categoría</label><select value={editItem.category||''} onChange={e => setEditItem({...editItem, category: e.target.value})} style={inputSt}>{categories.map(c => <option key={c}>{c}</option>)}</select></div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
-                <div><label style={lblSt}>Precio (€)</label><input type="number" step="0.01" value={editItem.price||''} onChange={e => setEditItem({...editItem, price: e.target.value})} style={inputSt}/></div>
-                <div><label style={lblSt}>Tipo precio</label><select value={editItem.price_type||''} onChange={e => setEditItem({...editItem, price_type: e.target.value})} style={inputSt}>{['por ración','por persona','por unidad','precio fijo'].map(t => <option key={t}>{t}</option>)}</select></div>
+                <div>
+                  <label style={lblSt}>Precio (€)</label>
+                  <input type="number" step="0.01" value={editItem.price||''} onChange={e => setEditItem({...editItem, price: e.target.value})} style={inputSt}/>
+                  {editItem.price_type === 'por kilo' && (
+                    <p style={{ fontSize:'0.72rem', color:'#D9A05B', margin:'0.3rem 0 0' }}>⚠️ Precio por kilo — Carlos recomendará cantidad según comensales</p>
+                  )}
+                </div>
+                <div>
+                  <label style={lblSt}>Tipo precio</label>
+                  <select value={editItem.price_type||''} onChange={e => setEditItem({...editItem, price_type: e.target.value})} style={inputSt}>
+                    {['por ración','por persona','por unidad','precio fijo','por kilo'].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
               </div>
               <div><label style={lblSt}>Alérgenos (comas)</label><input value={typeof editItem.allergens === 'string' ? editItem.allergens : (editItem.allergens||[]).join(', ')} onChange={e => setEditItem({...editItem, allergens: e.target.value})} style={inputSt}/></div>
               <div><label style={lblSt}>Notas internas</label><input value={editItem.notes||''} onChange={e => setEditItem({...editItem, notes: e.target.value})} style={inputSt}/></div>
+
+              {/* Foto del plato */}
+              <div>
+                <label style={lblSt}>Foto del Plato (opcional — prueba)</label>
+                <div style={{ display:'flex', gap:'0.75rem', alignItems:'center' }}>
+                  {editItem.image_url && (
+                    <div style={{ position:'relative', flexShrink:0 }}>
+                      <img src={editItem.image_url} alt="plato" style={{ width:'64px', height:'64px', objectFit:'cover', borderRadius:'8px', border:'1px solid rgba(255,255,255,0.1)' }}/>
+                      <button onClick={() => setEditItem({...editItem, image_url: null})} style={{ position:'absolute', top:'-6px', right:'-6px', background:'#C07070', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer', color:'#fff', fontSize:'10px', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>✕</button>
+                    </div>
+                  )}
+                  <label style={{ flex:1, padding:'0.6rem', border:'1px dashed rgba(200,169,110,0.4)', borderRadius:'8px', textAlign:'center', cursor:'pointer', color:'#A6A19A', fontSize:'0.82rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem' }}>
+                    <Image size={14} style={{ color:'#C8A96E' }}/> {editItem.image_url ? 'Cambiar foto' : 'Subir foto del plato'}
+                    <input type="file" accept="image/*" onChange={handleDishImageUpload} style={{ display:'none' }}/>
+                  </label>
+                </div>
+              </div>
+
               <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                 <input type="checkbox" id="avail" checked={editItem.available} onChange={e => setEditItem({...editItem, available: e.target.checked})} style={{ width:'15px', height:'15px' }}/>
                 <label htmlFor="avail" style={{ fontSize:'0.85rem' }}>Disponible</label>

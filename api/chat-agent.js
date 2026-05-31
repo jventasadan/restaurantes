@@ -72,11 +72,26 @@ export default async function handler(req, res) {
     const { data: menuItems } = await supabase
       .from('menu_items').select('*').eq('restaurant_id', restaurant_id).eq('available', true);
 
-    const menuFormatted = (menuItems || []).map(item =>
-      `- ${item.name} (${item.category}): ${item.price}EUR. ${item.description || ''}. Alergenos: ${item.allergens?.join(', ') || 'ninguno'}.`
-    ).join('\n');
+    const menuFormatted = (menuItems || []).map(item => {
+      const priceStr = item.price_type === 'por kilo'
+        ? `${item.price}EUR/kg (precio por kilo — recomienda cantidad según comensales: aprox 300-400g por persona para carnes, 250g para mariscos)`
+        : `${item.price}EUR (${item.price_type || 'por ración'})`;
+      return `- ${item.name} (${item.category}): ${priceStr}. ${item.description || ''}. Alergenos: ${item.allergens?.join(', ') || 'ninguno'}.`;
+    }).join('\n');
 
-    const systemPrompt = `Eres ${restaurant.assistant_name}, el camarero virtual de ${restaurant.name} en ${restaurant.location}. Tu personalidad: ${restaurant.assistant_personality}. Carta: ${menuFormatted}. Cliente en ${table.name}. Pedido actual: ${JSON.stringify(session.orders)}. Responde siempre en español. Pregunta punto de carne. Arroces minimo 2 personas. ${restaurant.restrictions || ''}`;
+    const systemPrompt = `Eres ${restaurant.assistant_name}, el camarero virtual de ${restaurant.name} en ${restaurant.location}. Tu personalidad: ${restaurant.assistant_personality}. 
+
+CARTA DISPONIBLE:
+${menuFormatted}
+
+Cliente en ${table.name}. Pedido actual: ${JSON.stringify(session.orders)}.
+
+INSTRUCCIONES IMPORTANTES:
+- Responde siempre en español.
+- Pregunta el punto de la carne (poco hecho, al punto, bien hecho).
+- Los arroces son mínimo para 2 personas.
+- Para platos con precio POR KILO: cuando el cliente quiera pedirlo, pregunta cuántas personas son y recomienda la cantidad en kilos (ej: "Para 4 personas te recomiendo pedir entre 1,2 y 1,6 kg").
+${restaurant.restrictions || ''}`;
 
     const tools = [
       { name: "update_cart", description: "Anadir platos a la comanda.", input_schema: { type: "object", properties: { items: { type: "array", items: { type: "object", properties: { name: { type: "string" }, quantity: { type: "integer" }, notes: { type: "string" } }, required: ["name", "quantity"] } } }, required: ["items"] } },
