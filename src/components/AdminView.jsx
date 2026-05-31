@@ -229,38 +229,44 @@ function AdminView() {
     return chunks;
   };
 
+  const callClaude = async (textChunk, imageData, imageType) => {
+    const systemPrompt = `Extrae todos los platos y vinos de esta carta. Devuelve SOLO JSON sin markdown:
+{"menu_items":[{"category":"string","name":"string","description":null,"price":0.00,"price_type":"por unidad","allergens":[],"available":true,"notes":null}]}`;
+    const msgContent = imageData
+      ? [{ type: 'image', source: { type: 'base64', media_type: imageType, data: imageData } }, { type: 'text', text: 'Extrae todos los platos y precios.' }]
+      : [{ type: 'text', text: textChunk }];
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4096, system: systemPrompt, messages: [{ role: 'user', content: msgContent }] })
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error?.message || 'Error API ' + res.status); }
+    const data = await res.json();
+    const txt = data.content?.find(c => c.type === 'text')?.text || '{}';
+    return JSON.parse(txt.replace(/```json/g,'').replace(/```/g,'').trim());
+  };
+
   const importFromPdf = async () => {
     if (!pdfText.trim() && !imagePreview) return;
     setImporting(true); setParsedItems([]);
     try {
       if (imagePreview && imageFile) {
-        // Imagen: una sola llamada al servidor
-        const res = await fetch('/api/analyze-menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imagePreview.split(',')[1], image_type: imageFile.type }) });
-        if (!res.ok) throw new Error('Error HTTP ' + res.status);
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        setParsedItems((data.menu_items || []).map(item => ({ ...item, selected: true })));
-        showMsg(`✓ ${data.menu_items?.length || 0} platos detectados`);
+        showMsg('Analizando imagen...');
+        const parsed = await callClaude(null, imagePreview.split(',')[1], imageFile.type);
+        setParsedItems((parsed.menu_items || []).map(item => ({ ...item, selected: true })));
+        showMsg(`✓ ${parsed.menu_items?.length || 0} platos detectados`);
       } else {
-        // Texto largo: limpiar separadores y dividir en chunks
         const cleanedText = cleanMenuText(pdfText);
-        const chunks = splitTextInChunks(cleanedText, 1800);
+        const chunks = splitTextInChunks(cleanedText, 2000);
         const allItems = [];
         for (let i = 0; i < chunks.length; i++) {
           showMsg(`Analizando parte ${i + 1} de ${chunks.length}...`);
-          const res = await fetch('/api/analyze-menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: chunks[i] }) });
-          if (!res.ok) {
-            if (res.status === 504) throw new Error(`Timeout en parte ${i+1}. Prueba con menos texto.`);
-            throw new Error('Error HTTP ' + res.status);
-          }
-          const data = await res.json();
-          if (data.error) throw new Error(data.error);
-          allItems.push(...(data.menu_items || []));
+          const parsed = await callClaude(chunks[i], null, null);
+          allItems.push(...(parsed.menu_items || []));
         }
-        // Eliminar duplicados por nombre
         const unique = allItems.filter((item, idx, arr) => arr.findIndex(x => x.name.toLowerCase() === item.name.toLowerCase()) === idx);
         setParsedItems(unique.map(item => ({ ...item, selected: true })));
-        showMsg(`✓ ${unique.length} platos detectados en ${chunks.length} partes`);
+        showMsg(`✓ ${unique.length} platos detectados`);
       }
     } catch(err) { showMsg('Error al analizar: ' + err.message, true); }
     finally { setImporting(false); }
