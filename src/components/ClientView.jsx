@@ -149,7 +149,7 @@ function ClientView() {
 
   // Estados de la interfaz
   const [mode, setMode] = useState(null); // 'welcome' | 'chat' | 'menu' | 'waiter'
-  const [activeCategory, setActiveCategory] = useState('Todos');
+  const [activeCategory, setActiveCategory] = useState('Entrantes');
   const [cart, setCart] = useState([]); // [{ item, quantity, notes, status: 'pending' }]
   const [cartOpen, setCartOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -559,10 +559,24 @@ function ClientView() {
   };
 
   // Normalizar categorías: las de vino se mapean a "Vinos"
-  const normalizeCategory = (cat) => isWineCategory(cat) ? 'Vinos' : cat;
+  // Categorías que se agrupan bajo "Menú"
+  const MENU_KEYWORDS = ['PRIMEROS A ELEGIR', 'SEGUNDOS A ELEGIR', 'MENU DEL DIA', 'MENÚ DEL DÍA', 'MENÚ DEL DIA', 'MENU DEL DÍA', 'MENU ESPECIAL', 'MENÚ ESPECIAL'];
+  const isMenuCategory = (cat) => {
+    if (!cat) return false;
+    const upper = cat.toUpperCase().trim();
+    return MENU_KEYWORDS.some(kw => upper.includes(kw));
+  };
+
+  const normalizeCategory = (cat) => {
+    if (!cat) return cat;
+    if (isWineCategory(cat)) return 'Vinos';
+    if (isMenuCategory(cat)) return 'Menú';
+    // Normalizar capitalización: "ENTRANTES" → "Entrantes"
+    return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+  };
 
   // Orden fijo de categorías
-  const CATEGORY_ORDER = ['Entrantes', 'Carnes', 'Arroces', 'Asados', 'Especial para Niños', 'Menú del Día', 'Postres', 'Pescados', 'Bebidas', 'General'];
+  const CATEGORY_ORDER = ['Entrantes', 'Carnes', 'Arroces', 'Asados', 'Especial para Niños', 'Menú', 'Postres', 'Pescados', 'Bebidas', 'General'];
   const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)))];
   const hasWines = menuItems.some(item => isWineCategory(item.category));
   // Primero las del orden fijo (si existen), luego las que no estén en la lista, luego Vinos, luego Todos
@@ -578,7 +592,9 @@ function ClientView() {
     ? menuItems
     : activeCategory === 'Vinos'
       ? menuItems.filter(item => isWineCategory(item.category))
-      : menuItems.filter(item => item.category === activeCategory);
+      : activeCategory === 'Menú'
+        ? menuItems.filter(item => isMenuCategory(item.category))
+        : menuItems.filter(item => normalizeCategory(item.category) === activeCategory);
 
   // Calcular totales del carrito
   const cartSubtotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.quantity), 0);
