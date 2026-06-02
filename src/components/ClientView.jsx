@@ -591,7 +591,15 @@ function ClientView() {
   const isBeverageCategory = (cat) => {
     if (!cat) return false;
     const low = cat.toLowerCase().trim();
-    return low.includes('bebida') || low.includes('cockta') || low.includes('mocktail') || low.includes('refresc') || low.includes('cerveza') || low.includes('agua') || low.includes('zumo') || low.includes('jugo') || low === 'pan';
+    return low.includes('bebida') || low.includes('cockta') || low.includes('mocktail') || low.includes('refresc') || low.includes('cerveza') || low.includes('agua') || low.includes('zumo') || low.includes('jugo');
+  };
+
+  // Subcategoría dentro de Bebidas para agrupar en la vista
+  const getBeverageSubcat = (cat) => {
+    if (!cat) return 'Otras bebidas';
+    const low = cat.toLowerCase().trim();
+    if (low.includes('cockta') || low.includes('mojito') || low.includes('mocktail')) return 'Cócteles y Mocktails';
+    return 'Refrescos, Cervezas y Vinos por copa';
   };
 
   const normalizeCategory = (cat) => {
@@ -604,18 +612,20 @@ function ClientView() {
   };
 
   // Orden fijo de categorías
-  const CATEGORY_ORDER = ['Menú', 'Entrantes', 'Carnes', 'Arroces', 'Asados', 'Especial para Niños', 'Postres', 'Pescados', 'Bebidas', 'General'];
+  const CATEGORY_ORDER = ['Menú', 'Para compartir', 'Cortes y ensaladas', 'Carnes', 'Arroces', 'Pescados', 'Bebidas', 'Vinos', 'Postres'];
   const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)))];
   const hasWines = menuItems.some(item => isWineCategory(item.category));
   const hasMenu = uniqueCats.includes('Menú');
-  // Menú del día primero, luego el resto del orden fijo, luego Vinos, luego Todos
+  const hasBev = uniqueCats.includes('Bebidas');
   const orderedCats = [
     ...(hasMenu ? ['Menú'] : []),
-    ...CATEGORY_ORDER.filter(c => c !== 'Menú' && uniqueCats.includes(c)),
-    ...uniqueCats.filter(c => !CATEGORY_ORDER.includes(c) && c !== 'Vinos' && c !== 'Menú'),
+    ...CATEGORY_ORDER.filter(c => c !== 'Menú' && c !== 'Vinos' && c !== 'Bebidas' && uniqueCats.includes(c)),
+    ...uniqueCats.filter(c => !CATEGORY_ORDER.includes(c) && c !== 'Vinos' && c !== 'Menú' && c !== 'Bebidas'),
+    ...(hasBev ? ['Bebidas'] : []),
     ...(hasWines ? ['Vinos'] : []),
+    'Postres',
     'Todos'
-  ];
+  ].filter((c, i, arr) => arr.indexOf(c) === i && (c === 'Todos' || uniqueCats.includes(c) || (c === 'Vinos' && hasWines)));
   const categories = orderedCats;
 
   const filteredMenuItems = activeCategory === 'Todos'
@@ -1004,6 +1014,32 @@ function ClientView() {
                         paddingBottom: '0.4rem', 
                         marginBottom: '0.6rem' 
                       }}>
+                        {groupName}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {groupItems.map(item => <MenuItemCard key={item.id} item={item} addToCart={addToCart} showSubcat={false} />)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()
+          ) : activeCategory === 'Bebidas' ? (
+            // Vista Bebidas: agrupada por tipo
+            (() => {
+              const bevGroups = {};
+              filteredMenuItems.forEach(item => {
+                const sub = getBeverageSubcat(item.category);
+                if (!bevGroups[sub]) bevGroups[sub] = [];
+                bevGroups[sub].push(item);
+              });
+              const BEV_ORDER = ['Refrescos, Cervezas y Vinos por copa', 'Cócteles y Mocktails', 'Otras bebidas'];
+              const sortedGroups = Object.entries(bevGroups).sort(([a], [b]) => BEV_ORDER.indexOf(a) - BEV_ORDER.indexOf(b));
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {sortedGroups.map(([groupName, groupItems]) => (
+                    <div key={groupName}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8A96E', borderBottom: '1px solid rgba(200,169,110,0.2)', paddingBottom: '0.4rem', marginBottom: '0.6rem' }}>
                         {groupName}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
