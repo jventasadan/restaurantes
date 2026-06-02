@@ -37,6 +37,11 @@ function AdminView() {
   const [menuDia, setMenuDia] = useState({ primero:'', segundo:'', postre:'', bebida:'', precio:'', imageUrl:'' });
   const [uploadingMenuDia, setUploadingMenuDia] = useState(false);
   const [savingMenuDia, setSavingMenuDia] = useState(false);
+  const [diaText, setDiaText] = useState('');
+  const [diaImageFile, setDiaImageFile] = useState(null);
+  const [diaImagePreview, setDiaImagePreview] = useState('');
+  const [diaImporting, setDiaImporting] = useState(false);
+  const [diaParsedItems, setDiaParsedItems] = useState([]);
   const [clearPin, setClearPin] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, name, type: 'item'|'table'}
   const logoInputRef = useRef(null);
@@ -281,6 +286,60 @@ function AdminView() {
     setSavingMenuDia(false);
     if (!error) { showMsg(`Menú del día (${hoy}) guardado ✓`); loadAll(); }
     else showMsg('Error: ' + error.message, true);
+  };
+
+  const handleDiaImageFile = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    setDiaImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setDiaImagePreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const importMenuDia = async () => {
+    if (!diaText.trim() && !diaImagePreview) return;
+    setDiaImporting(true); setDiaParsedItems([]);
+    try {
+      const body = diaImagePreview && diaImageFile
+        ? { image: diaImagePreview.split(',')[1], image_type: diaImageFile.type }
+        : { text: diaText };
+      const res = await fetch('/api/menu-analyzer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error('Error ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setDiaParsedItems((data.menu_items || []).map(item => ({ ...item, selected: true })));
+      showMsg(`✓ ${data.menu_items?.length || 0} platos detectados`);
+    } catch(err) { showMsg('Error al analizar: ' + err.message, true); }
+    finally { setDiaImporting(false); }
+  };
+
+  const importarMenuDiaSeleccionados = async () => {
+    const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const hoy = dias[new Date().getDay()];
+    const toImport = diaParsedItems.filter(i => i.selected);
+    if (!toImport.length) return;
+    // Borrar los platos del menú del día de hoy antes de importar
+    await supabase.from('menu_items').delete()
+      .eq('restaurant_id', selectedRestId)
+      .eq('category', 'Menú del Día')
+      .like('notes', `menu_dia_%`);
+    for (const item of toImport) {
+      await supabase.from('menu_items').insert({
+        restaurant_id: selectedRestId,
+        category: 'Menú del Día',
+        name: item.name,
+        description: item.description || null,
+        price: parseFloat(item.price) || 0,
+        price_type: item.price_type || 'por persona',
+        allergens: item.allergens || [],
+        available: true,
+        notes: `menu_dia_${hoy.toLowerCase()}`,
+        source: 'menu_dia'
+      });
+    }
+    showMsg(`${toImport.length} platos del menú del día importados ✓`);
+    setDiaParsedItems([]); setDiaText(''); setDiaImagePreview(''); setDiaImageFile(null);
+    loadAll();
   };
 
   const importFromPdf = async () => {
@@ -573,6 +632,63 @@ function AdminView() {
                     <div key={idx} style={{ display:'flex', alignItems:'center', gap:'0.75rem', background:'#0D0D0D', borderRadius:'6px', padding:'0.625rem 0.75rem' }}>
                       <input type="checkbox" checked={item.selected} onChange={e => setParsedItems(prev => prev.map((p,i) => i===idx ? {...p, selected: e.target.checked} : p))} style={{ width:'15px', height:'15px', flexShrink:0 }}/>
                       <div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:'0.88rem' }}>{item.name}</div><div style={{ fontSize:'0.75rem', color:'#A6A19A' }}>{item.category}</div></div>
+                      <div style={{ fontWeight:700, color:'#C8A96E' }}>{parseFloat(item.price||0).toFixed(2)}€</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: MENÚ DEL DÍA */}
+        {activeTab === 'menudia' && (
+          <div>
+            <h2 style={{ color:'#C8A96E', fontSize:'1.2rem', marginBottom:'0.5rem', marginTop:0 }}>Menú del Día</h2>
+            <p style={{ color:'#A6A19A', fontSize:'0.88rem', marginBottom:'1.5rem' }}>
+              Pega el texto o sube una foto del menú del día. Claude lo analiza y puedes importar los platos directamente a la categoría "Menú del Día". Cada importación reemplaza el menú anterior.
+            </p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'1.25rem', marginBottom:'1.25rem' }}>
+              <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.25rem' }}>
+                <h3 style={{ fontSize:'0.95rem', marginBottom:'0.875rem', marginTop:0 }}>Texto del menú del día</h3>
+                <textarea value={diaText} onChange={e => setDiaText(e.target.value)} rows={10}
+                  placeholder={"Ej: Primero: Ensalada mixta / Sopa\nSegundo: Merluza / Pollo asado\nPostre: Flan casero\nBebida: Agua o vino\nPrecio: 12€"}
+                  style={{...inputSt, resize:'vertical', width:'100%', fontFamily:'monospace', fontSize:'0.82rem', boxSizing:'border-box'}}/>
+              </div>
+              <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.25rem' }}>
+                <h3 style={{ fontSize:'0.95rem', marginBottom:'0.875rem', marginTop:0 }}>Foto del Menú del Día</h3>
+                <label style={{ display:'block', border:'2px dashed rgba(200,169,110,0.3)', borderRadius:'8px', padding:'1.5rem', textAlign:'center', cursor:'pointer', color:'#A6A19A', fontSize:'0.88rem' }}>
+                  {diaImagePreview
+                    ? <img src={diaImagePreview} alt="preview" style={{ maxWidth:'100%', maxHeight:'180px', objectFit:'contain', borderRadius:'6px' }}/>
+                    : <><Upload size={28} style={{ margin:'0 auto 0.5rem', display:'block', color:'#C8A96E' }}/> Haz clic para subir foto del menú</>
+                  }
+                  <input type="file" accept="image/*" onChange={handleDiaImageFile} style={{ display:'none' }}/>
+                </label>
+                {diaImagePreview && <button onClick={() => { setDiaImageFile(null); setDiaImagePreview(''); }} style={{ marginTop:'0.4rem', background:'none', border:'none', color:'#C07070', cursor:'pointer', fontSize:'0.82rem' }}>✕ Eliminar foto</button>}
+              </div>
+            </div>
+
+            <button onClick={importMenuDia} disabled={diaImporting || (!diaText.trim() && !diaImagePreview)}
+              style={{ padding:'0.875rem 2rem', background: diaImporting ? '#555' : '#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'8px', fontWeight:700, cursor: diaImporting ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'1.25rem' }}>
+              {diaImporting ? '⏳ Analizando...' : '🤖 Analizar con Claude'}
+            </button>
+
+            {diaParsedItems.length > 0 && (
+              <div style={{ background:'#1A1A1A', border:'1px solid rgba(200,169,110,0.2)', borderRadius:'12px', padding:'1.25rem' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
+                  <h3 style={{ margin:0, fontSize:'1rem' }}>Detectados: {diaParsedItems.length} platos</h3>
+                  <button onClick={importarMenuDiaSeleccionados} style={{ padding:'0.6rem 1.25rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'6px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                    <Check size={13}/> Importar al Menú del Día
+                  </button>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem' }}>
+                  {diaParsedItems.map((item, idx) => (
+                    <div key={idx} style={{ display:'flex', alignItems:'center', gap:'0.75rem', background:'#0D0D0D', borderRadius:'6px', padding:'0.625rem 0.75rem' }}>
+                      <input type="checkbox" checked={item.selected} onChange={e => setDiaParsedItems(prev => prev.map((p,i) => i===idx ? {...p, selected: e.target.checked} : p))} style={{ width:'15px', height:'15px', flexShrink:0 }}/>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:600, fontSize:'0.88rem' }}>{item.name}</div>
+                        <div style={{ fontSize:'0.75rem', color:'#A6A19A' }}>{item.description || item.category}</div>
+                      </div>
                       <div style={{ fontWeight:700, color:'#C8A96E' }}>{parseFloat(item.price||0).toFixed(2)}€</div>
                     </div>
                   ))}
