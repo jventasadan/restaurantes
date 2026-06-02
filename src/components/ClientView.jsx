@@ -58,12 +58,12 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
               <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic', display: 'block', marginBottom: '0.2rem' }}>{item.category}</span>
             )}
             {item.description && (
-              <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.15rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textAlign: 'right' }}>
+              <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.15rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textAlign: 'left' }}>
                 {item.description}
               </p>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.5rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
             <span style={{ color: '#C8A96E', fontWeight: 800, fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
               {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
             </span>
