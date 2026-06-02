@@ -591,10 +591,17 @@ function ClientView() {
     return MENU_KEYWORDS.some(kw => upper.includes(kw));
   };
 
+  const isBeverageCategory = (cat) => {
+    if (!cat) return false;
+    const low = cat.toLowerCase().trim();
+    return low.includes('bebida') || low.includes('cockta') || low.includes('mocktail') || low.includes('refresc') || low.includes('cerveza') || low.includes('agua') || low.includes('zumo') || low.includes('jugo') || low === 'pan';
+  };
+
   const normalizeCategory = (cat) => {
     if (!cat) return cat;
     if (isWineCategory(cat)) return 'Vinos';
     if (isMenuCategory(cat)) return 'Menú';
+    if (isBeverageCategory(cat)) return 'Bebidas';
     // Normalizar capitalización: "ENTRANTES" → "Entrantes"
     return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
   };
