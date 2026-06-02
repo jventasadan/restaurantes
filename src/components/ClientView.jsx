@@ -387,7 +387,8 @@ function ClientView() {
           name: i.item.name,
           price: i.item.price,
           quantity: i.quantity,
-          notes: i.notes
+          notes: i.notes || i.item.notes || null,
+          description: i.item.description || null
         }))
       };
 
