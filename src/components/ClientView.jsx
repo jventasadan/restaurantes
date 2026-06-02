@@ -94,7 +94,7 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
 
   // Tarjeta SIN foto: layout limpio horizontal, todo alineado a la izquierda
   return (
-    <div className="surface card menu-item-card" style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+    <div style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
           <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
