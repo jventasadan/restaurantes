@@ -95,9 +95,9 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
   // Tarjeta SIN foto
   return (
     <div style={{ padding: '0.85rem 1rem', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.15rem' }}>
-        <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3, flex: 1 }}>{item.name}</h4>
-        <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+      <div style={{ marginBottom: '0.15rem' }}>
+        <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: '0 0 0.2rem', lineHeight: 1.3 }}>{item.name}</h4>
+        <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.9rem' }}>
           {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
         </span>
       </div>
