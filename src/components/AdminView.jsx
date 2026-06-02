@@ -42,6 +42,7 @@ function AdminView() {
   const [diaImagePreview, setDiaImagePreview] = useState('');
   const [diaImporting, setDiaImporting] = useState(false);
   const [diaParsedItems, setDiaParsedItems] = useState([]);
+  const [diaDia, setDiaDia] = useState('lunes');
   const [clearPin, setClearPin] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, name, type: 'item'|'table'}
   const logoInputRef = useRef(null);
@@ -320,7 +321,7 @@ function AdminView() {
       const res = await fetch('/api/import-menudia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurant_id: selectedRestId, items: toImport })
+        body: JSON.stringify({ restaurant_id: selectedRestId, items: toImport, dia: diaDia })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.errors?.[0] || data.error || 'Error desconocido');
@@ -635,9 +636,21 @@ function AdminView() {
         {activeTab === 'menudia' && (
           <div>
             <h2 style={{ color:'#C8A96E', fontSize:'1.2rem', marginBottom:'0.5rem', marginTop:0 }}>Menú del Día</h2>
-            <p style={{ color:'#A6A19A', fontSize:'0.88rem', marginBottom:'1.5rem' }}>
-              Pega el texto o sube una foto del menú del día. Claude lo analiza y puedes importar los platos directamente a la categoría "Menú del Día". Cada importación reemplaza el menú anterior.
+            <p style={{ color:'#A6A19A', fontSize:'0.88rem', marginBottom:'1.25rem' }}>
+              Sube la foto o pega el texto del menú del día. Claude lo analiza e importa los platos. Cada importación reemplaza el menú del día seleccionado.
             </p>
+            {/* Selector de día */}
+            <div style={{ marginBottom:'1.25rem' }}>
+              <label style={{ fontSize:'0.85rem', color:'#A6A19A', display:'block', marginBottom:'0.4rem' }}>¿Para qué día es este menú?</label>
+              <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                {['lunes','martes','miércoles','jueves','viernes'].map(dia => (
+                  <button key={dia} onClick={() => setDiaDia(dia)}
+                    style={{ padding:'0.4rem 1rem', borderRadius:'20px', border: diaDia === dia ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.1)', background: diaDia === dia ? 'rgba(200,169,110,0.15)' : '#1A1A1A', color: diaDia === dia ? '#C8A96E' : '#A6A19A', fontWeight: diaDia === dia ? 700 : 400, cursor:'pointer', fontSize:'0.85rem', textTransform:'capitalize' }}>
+                    {dia}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'1.25rem', marginBottom:'1.25rem' }}>
               <div style={{ background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'1.25rem' }}>
                 <h3 style={{ fontSize:'0.95rem', marginBottom:'0.875rem', marginTop:0 }}>Texto del menú del día</h3>
@@ -668,7 +681,7 @@ function AdminView() {
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
                   <h3 style={{ margin:0, fontSize:'1rem' }}>Detectados: {diaParsedItems.length} platos</h3>
                   <button onClick={importarMenuDiaSeleccionados} style={{ padding:'0.6rem 1.25rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'6px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                    <Check size={13}/> Importar al Menú del Día
+                    <Check size={13}/> Importar — {diaDia.charAt(0).toUpperCase() + diaDia.slice(1)}
                   </button>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem' }}>

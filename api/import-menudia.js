@@ -9,11 +9,11 @@ export default async function handler(req, res) {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const { restaurant_id, items } = req.body;
+  const { restaurant_id, items, dia } = req.body;
   if (!restaurant_id || !items?.length) return res.status(400).json({ error: 'Faltan datos' });
 
-  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const hoy = dias[new Date().getDay()];
+  const diasValidos = ['lunes','martes','miércoles','jueves','viernes'];
+  const hoy = diasValidos.includes(dia) ? dia : diasValidos[new Date().getDay() - 1] || 'lunes';
 
   // Borrar anteriores
   await supabase.from('menu_items').delete()
