@@ -1062,6 +1062,7 @@ function ClientView() {
                   id: 'menu-pack-' + Date.now(),
                   name: 'Menú del Día',
                   description,
+                  notes: description,
                   price: packPrice,
                   price_type: 'por persona',
                   allergens: [],

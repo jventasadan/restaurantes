@@ -353,9 +353,9 @@ function CajaView() {
                           <span style={{ fontSize:'0.7rem', color: isLate ? '#C07070' : '#A6A19A', display:'flex', alignItems:'center', gap:'0.2rem' }}><Timer size={11}/>{elapsed}m</span>
                         </div>
                         {comanda.items.map((item, i) => (
-                          <div key={i} style={{ fontSize:'0.84rem', marginBottom:'0.2rem' }}>
+                          <div key={i} style={{ fontSize:'0.84rem', marginBottom:'0.35rem' }}>
                             <strong>{item.quantity}x</strong> {item.name}
-                            {item.notes && <div style={{ fontSize:'0.73rem', color:'#D9A05B', marginLeft:'1rem' }}>⚠️ {item.notes}</div>}
+                            {(item.notes || item.description) && <div style={{ fontSize:'0.73rem', color:'#D9A05B', marginLeft:'1rem', marginTop:'0.1rem' }}>{item.notes || item.description}</div>}
                           </div>
                         ))}
                         {col.nextStatus && (
@@ -418,9 +418,12 @@ function CajaView() {
                           </span>
                         </div>
                         {(comanda.items || []).map((item, i) => (
-                          <div key={i} style={{ fontSize:'0.85rem', display:'flex', justifyContent:'space-between', padding:'0.15rem 0' }}>
-                            <span><strong>{item.quantity}x</strong> {item.name}</span>
-                            <span style={{ color:'#C8A96E' }}>{((item.price || 0) * item.quantity).toFixed(2)}€</span>
+                          <div key={i} style={{ fontSize:'0.85rem', padding:'0.2rem 0' }}>
+                            <div style={{ display:'flex', justifyContent:'space-between' }}>
+                              <span><strong>{item.quantity}x</strong> {item.name}</span>
+                              <span style={{ color:'#C8A96E' }}>{((item.price || 0) * item.quantity).toFixed(2)}€</span>
+                            </div>
+                            {(item.notes || item.description) && <div style={{ fontSize:'0.75rem', color:'#D9A05B', paddingLeft:'1rem', marginTop:'0.1rem' }}>{item.notes || item.description}</div>}
                           </div>
                         ))}
                       </div>
