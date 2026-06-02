@@ -729,7 +729,7 @@ function ClientView() {
   if (mode === 'welcome') {
     const hasFondo = !!branding?.hero_image_url;
     return (
-      <div className="theme-dark" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0D0D0D', position: 'relative', overflow: 'hidden' }}>
+      <div className="theme-dark" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0D0D0D', position: 'relative', overflowX: 'clip' }}>
         
         {/* Fondo difuminado si hay hero_image_url */}
         {hasFondo && (
@@ -965,7 +965,7 @@ function ClientView() {
           VISTA: CARTA (Carta Navegable)
           ---------------------------------------------------- */}
       {mode === 'menu' && (
-        <div className="container" style={{ padding: '1rem 1.5rem', overflowX: 'hidden' }}>
+        <div style={{ padding: '1rem', width: '100%', boxSizing: 'border-box' }}>
           
           {/* Scroll Horizontal de Categorías */}
           <div className="category-tabs">
