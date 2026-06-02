@@ -94,11 +94,11 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
 
   // Tarjeta SIN foto: layout limpio horizontal, todo alineado a la izquierda
   return (
-    <div style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px' }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+    <div style={{ padding: '0.85rem 1rem', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', width: '100%' }}>
           <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-            <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
+            <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3, wordBreak: 'break-word' }}>{item.name}</h4>
             {showSubcat && item.category && (
               <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
             )}
