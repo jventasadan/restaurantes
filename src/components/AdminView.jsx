@@ -318,11 +318,13 @@ function AdminView() {
     const hoy = dias[new Date().getDay()];
     const toImport = diaParsedItems.filter(i => i.selected);
     if (!toImport.length) return;
-    // Borrar los platos del menú del día anteriores
-    const { error: delErr } = await supabase.from('menu_items').delete()
+    // Borrar los platos del menú del día anteriores (por categoría O por notes)
+    await supabase.from('menu_items').delete()
       .eq('restaurant_id', selectedRestId)
       .eq('category', 'Menú del Día');
-    if (delErr) { showMsg('Error al borrar menú anterior: ' + delErr.message, true); return; }
+    await supabase.from('menu_items').delete()
+      .eq('restaurant_id', selectedRestId)
+      .like('notes', 'menu_dia_%');
     let insertErrors = [];
     for (const item of toImport) {
       const { error: insErr } = await supabase.from('menu_items').insert({
