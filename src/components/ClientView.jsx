@@ -1081,12 +1081,12 @@ function ClientView() {
                             <div key={item.id} onClick={() => setMenuSelection(prev => ({ ...prev, [groupName]: item }))}
                               style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: isSelected ? 'rgba(200,169,110,0.15)' : '#1A1A1A', border: isSelected ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'left', wordBreak: 'break-word' }}>{item.name}</div>
+                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'left', wordBreak: 'break-word' }}>
+                                  {item.name}
+                                  {isSpecial && <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: '#C8A96E', fontWeight: 600 }}>+{(item.price - basePrice).toFixed(2)}€</span>}
+                                  {isSelected && <span style={{ marginLeft: '0.4rem', color: '#C8A96E', fontSize: '0.9rem' }}>✓</span>}
+                                </div>
                                 {item.description && <div style={{ fontSize: '0.75rem', color: '#7A7570', marginTop: '0.15rem', textAlign: 'left', wordBreak: 'break-word' }}>{item.description}</div>}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                                {isSpecial && <span style={{ fontSize: '0.75rem', color: '#C8A96E', fontWeight: 600 }}>+{(item.price - basePrice).toFixed(2)}€</span>}
-                                {isSelected && <span style={{ color: '#C8A96E', fontSize: '1rem' }}>✓</span>}
                               </div>
                             </div>
                           );
