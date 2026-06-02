@@ -157,6 +157,7 @@ function ClientView() {
   const [inputValue, setInputValue] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [billRequested, setBillRequested] = useState(false);
+  const [menuSelection, setMenuSelection] = useState({}); // { subcategory: item }
 
   const messagesEndRef = useRef(null);
 
@@ -1010,7 +1011,7 @@ function ClientView() {
               );
             })()
           ) : activeCategory === 'Menú' ? (
-            // Vista Menú del Día: agrupada por subcategoría (Primeros, Segundos, Postre...)
+            // Vista Menú del Día: selector de pack
             (() => {
               const SUBCAT_ORDER = ['Primeros', 'Entrantes', 'Segundos', 'Principales', 'Postre', 'Postres', 'Postre o café', 'Bebida', 'Bebidas', 'Bebida incluida'];
               const getSubcat = (item) => {
@@ -1028,20 +1029,71 @@ function ClientView() {
                 const bi = SUBCAT_ORDER.findIndex(k => b.toLowerCase().includes(k.toLowerCase()));
                 return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
               });
+              // Calcular precio del pack: precio base del primero, sube si el elegido es más caro
+              const basePrice = filteredMenuItems.find(i => {
+                const sub = getSubcat(i).toLowerCase();
+                return sub.includes('primer') || sub.includes('entrant');
+              })?.price || filteredMenuItems[0]?.price || 0;
+              const selectedItems = Object.values(menuSelection);
+              const packPrice = selectedItems.reduce((max, item) => Math.max(max, item.price), basePrice);
+              const allGroupsSelected = sortedGroups.length > 0 && sortedGroups.every(([g]) => menuSelection[g]);
+              const addMenuPack = () => {
+                if (!selectedItems.length) return;
+                const description = sortedGroups
+                  .filter(([g]) => menuSelection[g])
+                  .map(([g, _]) => menuSelection[g].name)
+                  .join(' / ');
+                const packItem = {
+                  id: 'menu-pack-' + Date.now(),
+                  name: 'Menú del Día',
+                  description,
+                  price: packPrice,
+                  price_type: 'por persona',
+                  allergens: [],
+                  category: 'Menú del Día'
+                };
+                addToCart(packItem, 1);
+                setMenuSelection({});
+              };
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {sortedGroups.map(([groupName, groupItems]) => (
                     <div key={groupName}>
-                      {groupName !== 'Platos' && (
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8A96E', borderBottom: '1px solid rgba(200,169,110,0.2)', paddingBottom: '0.4rem', marginBottom: '0.6rem' }}>
-                          {groupName}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        {groupItems.map(item => <MenuItemCard key={item.id} item={item} addToCart={addToCart} showSubcat={false} />)}
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8A96E', borderBottom: '1px solid rgba(200,169,110,0.2)', paddingBottom: '0.4rem', marginBottom: '0.6rem' }}>
+                        {groupName}
+                        {menuSelection[groupName] && (
+                          <span style={{ marginLeft: '0.5rem', color: '#4CAF50', fontSize: '0.65rem' }}>✓ {menuSelection[groupName].name}</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {groupItems.map(item => {
+                          const isSelected = menuSelection[groupName]?.id === item.id;
+                          const isSpecial = item.price > basePrice;
+                          return (
+                            <div key={item.id} onClick={() => setMenuSelection(prev => ({ ...prev, [groupName]: item }))}
+                              style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: isSelected ? 'rgba(200,169,110,0.15)' : '#1A1A1A', border: isSelected ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'right' }}>{item.name}</div>
+                                {item.description && <div style={{ fontSize: '0.75rem', color: '#7A7570', marginTop: '0.15rem', textAlign: 'right' }}>{item.description}</div>}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                                {isSpecial && <span style={{ fontSize: '0.75rem', color: '#C8A96E', fontWeight: 600 }}>+{(item.price - basePrice).toFixed(2)}€</span>}
+                                {isSelected && <span style={{ color: '#C8A96E', fontSize: '1rem' }}>✓</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
+                  {/* Botón añadir pack */}
+                  <div style={{ position: 'sticky', bottom: '1rem', marginTop: '0.5rem' }}>
+                    <button onClick={addMenuPack} disabled={!selectedItems.length}
+                      className="btn" style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', fontWeight: 700, opacity: selectedItems.length ? 1 : 0.4, borderRadius: '12px' }}>
+                      Añadir Menú — {packPrice.toFixed(2)}€
+                      {!allGroupsSelected && selectedItems.length > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 400, marginLeft: '0.5rem', opacity: 0.7 }}>(incompleto)</span>}
+                    </button>
+                  </div>
                 </div>
               );
             })()
