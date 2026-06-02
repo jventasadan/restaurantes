@@ -92,12 +92,12 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
     );
   }
 
-  // Tarjeta SIN foto: layout limpio horizontal
+  // Tarjeta SIN foto: layout limpio horizontal, todo alineado a la derecha
   return (
     <div className="surface card menu-item-card" style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <div style={{ textAlign: 'right' }}>
             <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
             {showSubcat && item.category && (
               <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
@@ -150,7 +150,7 @@ function ClientView() {
   // Estados de la interfaz
   const [mode, setMode] = useState(null); // 'welcome' | 'chat' | 'menu' | 'waiter'
   const [sessionClosed, setSessionClosed] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('Entrantes');
+  const [activeCategory, setActiveCategory] = useState(null);
   const [cart, setCart] = useState([]); // [{ item, quantity, notes, status: 'pending' }]
   const [cartOpen, setCartOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -322,6 +322,30 @@ function ClientView() {
       supabase.removeChannel(channel);
     };
   }, [session]);
+
+  // Ajustar activeCategory al primer tab disponible cuando carguen los items
+  useEffect(() => {
+    if (menuItems.length === 0) return;
+    const MENU_KW = ["PRIMEROS A ELEGIR", "SEGUNDOS A ELEGIR", "MENU DEL DIA", "MENÚ DEL DÍA", "MENÚ DEL DIA", "MENU DEL DÍA", "MENU ESPECIAL", "MENÚ ESPECIAL"];
+    const isWine = (cat) => { if (!cat) return false; const u = cat.toUpperCase().trim(); return ["VINO", "RIOJA", "RIBERA", "ALBARIÑO", "CAVA", "CHAMPAGNE", "ROSADO", "BLANCO", "TINTO", "GENEROSO", "JEREZ"].some(kw => u.includes(kw)); };
+    const isMenu = (cat) => { if (!cat) return false; return MENU_KW.some(kw => cat.toUpperCase().trim().includes(kw)); };
+    const normalize = (cat) => { if (!cat) return cat; if (isWine(cat)) return "Vinos"; if (isMenu(cat)) return "Menú"; return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase(); };
+    const FIXED_ORDER = ["Menú", "Entrantes", "Carnes", "Arroces", "Asados", "Especial para Niños", "Postres", "Pescados", "Bebidas", "General"];
+    const unique = [...new Set(menuItems.map(i => normalize(i.category)))];
+    const hasMenu = unique.includes("Menú");
+    const hasWines = menuItems.some(i => isWine(i.category));
+    const ordered = [
+      ...(hasMenu ? ["Menú"] : []),
+      ...FIXED_ORDER.filter(c => c !== "Menú" && unique.includes(c)),
+      ...unique.filter(c => !FIXED_ORDER.includes(c) && c !== "Vinos" && c !== "Menú"),
+      ...(hasWines ? ["Vinos"] : []),
+      "Todos"
+    ];
+    setActiveCategory(prev => {
+      if (prev && ordered.includes(prev)) return prev;
+      return ordered[0] || "Todos";
+    });
+  }, [menuItems]);
 
   // 2. Lógica del Carrito Manual
   const addToCart = (item, quantity = 1, notes = '') => {
