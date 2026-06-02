@@ -317,17 +317,20 @@ function AdminView() {
     const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
     const hoy = dias[new Date().getDay()];
     const toImport = diaParsedItems.filter(i => i.selected);
-    if (!toImport.length) return;
+    console.log('[MenuDia] toImport:', toImport.length, 'items', 'restaurantId:', selectedRestId);
+    console.log('[MenuDia] items:', JSON.stringify(toImport.map(i => ({name:i.name, cat:i.category}))));
+    if (!toImport.length) { console.log('[MenuDia] ABORT: no items selected'); return; }
     // Borrar los platos del menú del día anteriores (por categoría O por notes)
-    await supabase.from('menu_items').delete()
+    const { error: del1 } = await supabase.from('menu_items').delete()
       .eq('restaurant_id', selectedRestId)
       .eq('category', 'Menú del Día');
-    await supabase.from('menu_items').delete()
+    const { error: del2 } = await supabase.from('menu_items').delete()
       .eq('restaurant_id', selectedRestId)
       .like('notes', 'menu_dia_%');
+    console.log('[MenuDia] delete results:', del1?.message || 'ok', del2?.message || 'ok');
     let insertErrors = [];
     for (const item of toImport) {
-      const { error: insErr } = await supabase.from('menu_items').insert({
+      const payload = {
         restaurant_id: selectedRestId,
         category: 'Menú del Día',
         name: item.name,
@@ -337,7 +340,10 @@ function AdminView() {
         allergens: item.allergens || [],
         available: true,
         notes: `menu_dia_${hoy.toLowerCase()}|${item.category || ''}`
-      });
+      };
+      console.log('[MenuDia] inserting:', payload.name, 'cat:', payload.category, 'notes:', payload.notes);
+      const { data: insData, error: insErr } = await supabase.from('menu_items').insert(payload).select();
+      console.log('[MenuDia] insert result:', insData?.[0]?.id || 'NO ID', insErr?.message || 'ok');
       if (insErr) insertErrors.push(insErr.message);
     }
     if (insertErrors.length) {
