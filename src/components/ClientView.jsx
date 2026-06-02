@@ -961,7 +961,7 @@ function ClientView() {
           VISTA: CARTA (Carta Navegable)
           ---------------------------------------------------- */}
       {mode === 'menu' && (
-        <div className="container" style={{ padding: '1rem 1.5rem' }}>
+        <div className="container" style={{ padding: '1rem 1.5rem', overflowX: 'hidden' }}>
           
           {/* Scroll Horizontal de Categorías */}
           <div className="category-tabs">
@@ -1018,9 +1018,15 @@ function ClientView() {
                 if (item.notes && item.notes.includes('|')) return item.notes.split('|')[1] || 'Platos';
                 return 'Platos';
               };
+              const SEGUNDOS_ALIASES = ['segundos', 'principales', 'especiales', 'especial'];
+              const normalizeGroup = (sub) => {
+                const low = sub.toLowerCase();
+                if (SEGUNDOS_ALIASES.some(a => low.includes(a))) return 'Segundos';
+                return sub;
+              };
               const groups = {};
               filteredMenuItems.forEach(item => {
-                const sub = getSubcat(item);
+                const sub = normalizeGroup(getSubcat(item));
                 if (!groups[sub]) groups[sub] = [];
                 groups[sub].push(item);
               });
@@ -1071,10 +1077,10 @@ function ClientView() {
                           const isSpecial = item.price > basePrice;
                           return (
                             <div key={item.id} onClick={() => setMenuSelection(prev => ({ ...prev, [groupName]: item }))}
-                              style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: isSelected ? 'rgba(200,169,110,0.15)' : '#1A1A1A', border: isSelected ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'right' }}>{item.name}</div>
-                                {item.description && <div style={{ fontSize: '0.75rem', color: '#7A7570', marginTop: '0.15rem', textAlign: 'right' }}>{item.description}</div>}
+                              style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: isSelected ? 'rgba(200,169,110,0.15)' : '#1A1A1A', border: isSelected ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                                {item.description && <div style={{ fontSize: '0.75rem', color: '#7A7570', marginTop: '0.15rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
                                 {isSpecial && <span style={{ fontSize: '0.75rem', color: '#C8A96E', fontWeight: 600 }}>+{(item.price - basePrice).toFixed(2)}€</span>}
