@@ -92,12 +92,12 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
     );
   }
 
-  // Tarjeta SIN foto: layout limpio horizontal, todo alineado a la derecha
+  // Tarjeta SIN foto: layout limpio horizontal, todo alineado a la izquierda
   return (
     <div className="surface card menu-item-card" style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: '0.75rem' }}>
-          <div style={{ textAlign: 'right' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
             <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
             {showSubcat && item.category && (
               <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
@@ -108,7 +108,7 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
           </span>
         </div>
         {item.description && (
-          <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textAlign: 'right' }}>
+          <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textAlign: 'left' }}>
             {item.description}
           </p>
         )}
