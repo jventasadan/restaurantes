@@ -314,45 +314,22 @@ function AdminView() {
   };
 
   const importarMenuDiaSeleccionados = async () => {
-    const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-    const hoy = dias[new Date().getDay()];
     const toImport = diaParsedItems.filter(i => i.selected);
-    console.log('[MenuDia] toImport:', toImport.length, 'items', 'restaurantId:', selectedRestId);
-    console.log('[MenuDia] items:', JSON.stringify(toImport.map(i => ({name:i.name, cat:i.category}))));
-    if (!toImport.length) { console.log('[MenuDia] ABORT: no items selected'); return; }
-    // Borrar los platos del menú del día anteriores (por categoría O por notes)
-    const { error: del1 } = await supabase.from('menu_items').delete()
-      .eq('restaurant_id', selectedRestId)
-      .eq('category', 'Menú del Día');
-    const { error: del2 } = await supabase.from('menu_items').delete()
-      .eq('restaurant_id', selectedRestId)
-      .like('notes', 'menu_dia_%');
-    console.log('[MenuDia] delete results:', del1?.message || 'ok', del2?.message || 'ok');
-    let insertErrors = [];
-    for (const item of toImport) {
-      const payload = {
-        restaurant_id: selectedRestId,
-        category: 'Menú del Día',
-        name: item.name,
-        description: item.description || null,
-        price: parseFloat(item.price) || 0,
-        price_type: item.price_type || 'por unidad',
-        allergens: item.allergens || [],
-        available: true,
-        notes: `menu_dia_${hoy.toLowerCase()}|${item.category || ''}`
-      };
-      console.log('[MenuDia] inserting:', payload.name, 'cat:', payload.category, 'notes:', payload.notes);
-      const { data: insData, error: insErr } = await supabase.from('menu_items').insert(payload).select();
-      console.log('[MenuDia] insert result:', insData?.[0]?.id || 'NO ID', insErr?.message || 'ok');
-      if (insErr) insertErrors.push(insErr.message);
+    if (!toImport.length) return;
+    try {
+      const res = await fetch('/api/import-menudia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_id: selectedRestId, items: toImport })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.errors?.[0] || data.error || 'Error desconocido');
+      showMsg(`${data.inserted} platos del menú del día importados ✓`);
+      setDiaParsedItems([]); setDiaText(''); setDiaImagePreview(''); setDiaImageFile(null);
+      loadAll();
+    } catch(err) {
+      showMsg('Error al importar: ' + err.message, true);
     }
-    if (insertErrors.length) {
-      showMsg('Errores al insertar: ' + insertErrors[0], true);
-    } else {
-      showMsg(`${toImport.length} platos del menú del día importados ✓`);
-    }
-    setDiaParsedItems([]); setDiaText(''); setDiaImagePreview(''); setDiaImageFile(null);
-    loadAll();
   };
 
   const importFromPdf = async () => {
