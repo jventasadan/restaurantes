@@ -1018,11 +1018,13 @@ function ClientView() {
                 if (item.notes && item.notes.includes('|')) return item.notes.split('|')[1] || 'Platos';
                 return 'Platos';
               };
-              const SEGUNDOS_ALIASES = ['segundos', 'principales', 'especiales', 'especial'];
               const normalizeGroup = (sub) => {
-                const low = sub.toLowerCase();
-                if (SEGUNDOS_ALIASES.some(a => low.includes(a))) return 'Segundos';
-                return sub;
+                const low = (sub || '').toLowerCase().trim();
+                if (low.includes('segundo') || low.includes('principal') || low.includes('especial')) return 'Segundos';
+                if (low.includes('primer') || low.includes('entrant')) return 'Primeros';
+                if (low.includes('postre') || low.includes('café') || low.includes('cafe')) return 'Postre o Café';
+                if (low.includes('bebida')) return 'Bebida';
+                return sub || 'Otros';
               };
               const groups = {};
               filteredMenuItems.forEach(item => {
@@ -1079,8 +1081,8 @@ function ClientView() {
                             <div key={item.id} onClick={() => setMenuSelection(prev => ({ ...prev, [groupName]: item }))}
                               style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: isSelected ? 'rgba(200,169,110,0.15)' : '#1A1A1A', border: isSelected ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                                {item.description && <div style={{ fontSize: '0.75rem', color: '#7A7570', marginTop: '0.15rem', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>}
+                                <div style={{ fontSize: '0.93rem', color: isSelected ? '#FAF7F2' : '#D0CBC4', fontWeight: isSelected ? 600 : 400, textAlign: 'left', wordBreak: 'break-word' }}>{item.name}</div>
+                                {item.description && <div style={{ fontSize: '0.75rem', color: '#7A7570', marginTop: '0.15rem', textAlign: 'left', wordBreak: 'break-word' }}>{item.description}</div>}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
                                 {isSpecial && <span style={{ fontSize: '0.75rem', color: '#C8A96E', fontWeight: 600 }}>+{(item.price - basePrice).toFixed(2)}€</span>}
