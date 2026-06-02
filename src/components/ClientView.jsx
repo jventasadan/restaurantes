@@ -58,12 +58,12 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
               <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic', display: 'block', marginBottom: '0.2rem' }}>{item.category}</span>
             )}
             {item.description && (
-              <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.15rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.15rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textAlign: 'right' }}>
                 {item.description}
               </p>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
             <span style={{ color: '#C8A96E', fontWeight: 800, fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
               {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
             </span>
@@ -75,7 +75,7 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
                 return <span key={alg} title={alg} style={{ width:'18px', height:'18px', borderRadius:'3px', background:'rgba(200,169,110,0.15)', border:'1px solid rgba(200,169,110,0.3)', color:'#C8A96E', fontSize:'0.55rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{label}</span>;
               })}
             </div>
-            <button onClick={() => addToCart(item, 1)} className="btn" style={{ marginLeft: 'auto', padding: '0.3rem 0.85rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}>
+            <button onClick={() => addToCart(item, 1)} className="btn" style={{ padding: '0.3rem 0.85rem', fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap' }}>
               <Plus size={13} style={{ marginRight: '0.2rem' }} /> Añadir
             </button>
           </div>
@@ -575,13 +575,15 @@ function ClientView() {
   };
 
   // Orden fijo de categorías
-  const CATEGORY_ORDER = ['Entrantes', 'Carnes', 'Arroces', 'Asados', 'Especial para Niños', 'Menú', 'Postres', 'Pescados', 'Bebidas', 'General'];
+  const CATEGORY_ORDER = ['Menú', 'Entrantes', 'Carnes', 'Arroces', 'Asados', 'Especial para Niños', 'Postres', 'Pescados', 'Bebidas', 'General'];
   const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)))];
   const hasWines = menuItems.some(item => isWineCategory(item.category));
-  // Primero las del orden fijo (si existen), luego las que no estén en la lista, luego Vinos, luego Todos
+  const hasMenu = uniqueCats.includes('Menú');
+  // Menú del día primero, luego el resto del orden fijo, luego Vinos, luego Todos
   const orderedCats = [
-    ...CATEGORY_ORDER.filter(c => uniqueCats.includes(c)),
-    ...uniqueCats.filter(c => !CATEGORY_ORDER.includes(c) && c !== 'Vinos'),
+    ...(hasMenu ? ['Menú'] : []),
+    ...CATEGORY_ORDER.filter(c => c !== 'Menú' && uniqueCats.includes(c)),
+    ...uniqueCats.filter(c => !CATEGORY_ORDER.includes(c) && c !== 'Vinos' && c !== 'Menú'),
     ...(hasWines ? ['Vinos'] : []),
     'Todos'
   ];
