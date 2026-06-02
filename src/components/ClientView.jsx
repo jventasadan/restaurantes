@@ -112,7 +112,7 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
             {item.description}
           </p>
         )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '0.5rem', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.5rem', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '3px' }}>
             {(item.allergens || []).map((alg) => {
               const map = { gluten:'GL', lacteos:'LA', pescado:'PE', marisco:'MA', huevo:'HU', 'frutos de cascara':'FR', cacahuetes:'CA', soja:'SO', mostaza:'MO', sesamo:'SE', sulfitos:'SU', altramuces:'AL', moluscos:'MS', apio:'AP' };
