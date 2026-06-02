@@ -92,27 +92,24 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
     );
   }
 
-  // Tarjeta SIN foto: layout limpio horizontal, todo alineado a la izquierda
+  // Tarjeta SIN foto
   return (
-    <div style={{ padding: '0.85rem 1rem', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', width: '100%', boxSizing: 'border-box' }}>
-      <div style={{ width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', width: '100%' }}>
-          <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-            <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3, wordBreak: 'break-word' }}>{item.name}</h4>
-            {showSubcat && item.category && (
-              <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic' }}>{item.category}</span>
-            )}
-          </div>
-          <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
-          </span>
-        </div>
-        {item.description && (
-          <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.2rem 0 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', textAlign: 'left' }}>
-            {item.description}
-          </p>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.5rem', gap: '0.5rem' }}>
+    <div style={{ padding: '0.85rem 1rem', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.15rem' }}>
+        <h4 style={{ fontSize: '0.95rem', color: '#FAF7F2', fontWeight: 600, margin: 0, lineHeight: 1.3, flex: 1 }}>{item.name}</h4>
+        <span style={{ color: '#C8A96E', fontWeight: 700, fontSize: '0.95rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          {item.price}€{item.price_type === 'por kilo' && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/Kg.</span>}
+        </span>
+      </div>
+      {showSubcat && item.category && (
+        <span style={{ fontSize: '0.68rem', color: '#C8A96E', opacity: 0.75, fontStyle: 'italic', display: 'block', marginBottom: '0.15rem' }}>{item.category}</span>
+      )}
+      {item.description && (
+        <p style={{ fontSize: '0.78rem', color: '#A6A19A', margin: '0.15rem 0 0.4rem', lineHeight: 1.4 }}>
+          {item.description}
+        </p>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.4rem', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '3px' }}>
             {(item.allergens || []).map((alg) => {
               const map = { gluten:'GL', lacteos:'LA', pescado:'PE', marisco:'MA', huevo:'HU', 'frutos de cascara':'FR', cacahuetes:'CA', soja:'SO', mostaza:'MO', sesamo:'SE', sulfitos:'SU', altramuces:'AL', moluscos:'MS', apio:'AP' };
@@ -124,7 +121,6 @@ function MenuItemCard({ item, addToCart, showSubcat }) {
           <button onClick={() => addToCart(item, 1)} className="btn" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px' }}>
             <Plus size={14} style={{ marginRight: '0.2rem' }} /> Añadir
           </button>
-        </div>
       </div>
     </div>
   );
