@@ -336,7 +336,7 @@ function AdminView() {
         price_type: item.price_type || 'por unidad',
         allergens: item.allergens || [],
         available: true,
-        notes: `menu_dia_${hoy.toLowerCase()}`
+        notes: `menu_dia_${hoy.toLowerCase()}|${item.category || ''}`
       });
       if (insErr) insertErrors.push(insErr.message);
     }

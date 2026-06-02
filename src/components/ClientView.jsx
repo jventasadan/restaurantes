@@ -1009,6 +1009,42 @@ function ClientView() {
                 </div>
               );
             })()
+          ) : activeCategory === 'Menú' ? (
+            // Vista Menú del Día: agrupada por subcategoría (Primeros, Segundos, Postre...)
+            (() => {
+              const SUBCAT_ORDER = ['Primeros', 'Entrantes', 'Segundos', 'Principales', 'Postre', 'Postres', 'Postre o café', 'Bebida', 'Bebidas', 'Bebida incluida'];
+              const getSubcat = (item) => {
+                if (item.notes && item.notes.includes('|')) return item.notes.split('|')[1] || 'Platos';
+                return 'Platos';
+              };
+              const groups = {};
+              filteredMenuItems.forEach(item => {
+                const sub = getSubcat(item);
+                if (!groups[sub]) groups[sub] = [];
+                groups[sub].push(item);
+              });
+              const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
+                const ai = SUBCAT_ORDER.findIndex(k => a.toLowerCase().includes(k.toLowerCase()));
+                const bi = SUBCAT_ORDER.findIndex(k => b.toLowerCase().includes(k.toLowerCase()));
+                return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+              });
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {sortedGroups.map(([groupName, groupItems]) => (
+                    <div key={groupName}>
+                      {groupName !== 'Platos' && (
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8A96E', borderBottom: '1px solid rgba(200,169,110,0.2)', paddingBottom: '0.4rem', marginBottom: '0.6rem' }}>
+                          {groupName}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {groupItems.map(item => <MenuItemCard key={item.id} item={item} addToCart={addToCart} showSubcat={false} />)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {filteredMenuItems.map((item) => (
