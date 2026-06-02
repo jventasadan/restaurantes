@@ -28,10 +28,20 @@ function AdminView() {
   const [uploadingHero, setUploadingHero] = useState(false);
   const [msg, setMsg] = useState('');
   const [showClearPin, setShowClearPin] = useState(false);
+  // PIN de acceso al admin
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const ADMIN_PIN = '1234';
+  // Menú del día
+  const [menuDia, setMenuDia] = useState({ primero:'', segundo:'', postre:'', bebida:'', precio:'', imageUrl:'' });
+  const [uploadingMenuDia, setUploadingMenuDia] = useState(false);
+  const [savingMenuDia, setSavingMenuDia] = useState(false);
   const [clearPin, setClearPin] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, name, type: 'item'|'table'}
   const logoInputRef = useRef(null);
   const heroInputRef = useRef(null);
+  const menuDiaInputRef = useRef(null);
 
   useEffect(() => {
     if (!selectedRestId) { window.location.href = '/auth'; return; }
@@ -251,6 +261,28 @@ function AdminView() {
     return data;
   };
 
+  const handleMenuDiaImageUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    try { const url = await uploadImageViaServer(file, 'menu-dia', setUploadingMenuDia); setMenuDia(m => ({ ...m, imageUrl: url })); showMsg('Foto del menú del día subida ✓'); }
+    catch(err) { showMsg('Error: ' + err.message, true); }
+  };
+
+  const saveMenuDia = async () => {
+    setSavingMenuDia(true);
+    const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const hoy = dias[new Date().getDay()];
+    const { error } = await supabase.from('menu_items').upsert({
+      restaurant_id: selectedRestId, category: 'Menú del Día',
+      name: `Menú del Día — ${hoy}`,
+      description: [menuDia.primero?`1º ${menuDia.primero}`:'', menuDia.segundo?`2º ${menuDia.segundo}`:'', menuDia.postre?`Postre: ${menuDia.postre}`:'', menuDia.bebida?`Bebida: ${menuDia.bebida}`:''].filter(Boolean).join(' | '),
+      price: parseFloat(menuDia.precio)||0, price_type:'por persona', allergens:[], available:true,
+      image_url: menuDia.imageUrl||null, notes:`menu_dia_${hoy.toLowerCase()}`, source:'menu_dia'
+    }, { onConflict:'restaurant_id,name' });
+    setSavingMenuDia(false);
+    if (!error) { showMsg(`Menú del día (${hoy}) guardado ✓`); loadAll(); }
+    else showMsg('Error: ' + error.message, true);
+  };
+
   const importFromPdf = async () => {
     if (!pdfText.trim() && !imagePreview) return;
     setImporting(true); setParsedItems([]);
@@ -296,6 +328,32 @@ function AdminView() {
   const tablesByTerraza = tables.filter(t => t.zone === 'terraza');
   const tablesOther = tables.filter(t => t.zone && t.zone !== 'interior' && t.zone !== 'salon' && t.zone !== 'terraza');
 
+  // Pantalla de PIN
+  if (!pinUnlocked) return (
+    <div style={{ minHeight:'100vh', background:'#0D0D0D', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Inter,sans-serif', padding:'1rem' }}>
+      <div style={{ background:'#1A1A1A', border:'1px solid rgba(200,169,110,0.2)', borderRadius:'16px', padding:'2.5rem 2rem', width:'100%', maxWidth:'340px', textAlign:'center' }}>
+        <div style={{ fontSize:'2.5rem', marginBottom:'0.75rem' }}>🔐</div>
+        <h2 style={{ color:'#C8A96E', fontFamily:'Playfair Display,serif', marginBottom:'0.5rem', fontSize:'1.4rem' }}>Panel de Administración</h2>
+        <p style={{ color:'#A6A19A', fontSize:'0.85rem', marginBottom:'2rem' }}>Introduce el PIN para acceder</p>
+        <input
+          type="password"
+          value={pinInput}
+          onChange={e => { setPinInput(e.target.value); setPinError(''); }}
+          onKeyPress={e => { if (e.key==='Enter') { if (pinInput===ADMIN_PIN) setPinUnlocked(true); else { setPinError('PIN incorrecto'); setPinInput(''); } } }}
+          placeholder="• • • •"
+          maxLength={4}
+          autoFocus
+          style={{ width:'100%', padding:'0.875rem', background:'#0D0D0D', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#FAF7F2', fontSize:'1.8rem', textAlign:'center', letterSpacing:'0.6rem', outline:'none', boxSizing:'border-box', marginBottom:'0.75rem' }}
+        />
+        {pinError && <p style={{ color:'#C07070', fontSize:'0.85rem', margin:'0 0 0.75rem' }}>{pinError}</p>}
+        <button
+          onClick={() => { if (pinInput===ADMIN_PIN) setPinUnlocked(true); else { setPinError('PIN incorrecto'); setPinInput(''); } }}
+          style={{ width:'100%', padding:'0.875rem', background:'#C8A96E', color:'#0D0D0D', border:'none', borderRadius:'10px', fontWeight:700, fontSize:'1rem', cursor:'pointer' }}
+        >Entrar</button>
+      </div>
+    </div>
+  );
+
   if (loading) return <div style={{ minHeight:'100vh', background:'#0D0D0D', display:'flex', alignItems:'center', justifyContent:'center', color:'#C8A96E', fontFamily:'Inter,sans-serif' }}>Cargando...</div>;
 
   return (
@@ -316,7 +374,7 @@ function AdminView() {
       {msg && <div style={{ padding:'0.75rem 1.5rem', background: msg.error ? 'rgba(192,112,112,0.15)' : 'rgba(142,155,119,0.15)', color: msg.error ? '#C07070' : '#8E9B77', fontSize:'0.9rem', textAlign:'center' }}>{msg.text}</div>}
 
       <div style={{ background:'#1A1A1A', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'0 1rem', display:'flex', gap:'0', overflowX:'auto' }}>
-        {[['branding','⚙️ Config'],['tables','📍 Mesas'],['menu','🍽️ Carta'],['pdf','📄 PDF']].map(([tab, label]) => (
+        {[['branding','⚙️ Config'],['tables','📍 Mesas'],['menu','🍽️ Carta'],['pdf','📄 PDF'],['menudia','🍱 Menú Día']].map(([tab, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding:'0.875rem 1rem', background:'none', border:'none', borderBottom: activeTab===tab ? '2px solid #C8A96E' : '2px solid transparent', color: activeTab===tab ? '#C8A96E' : '#A6A19A', cursor:'pointer', fontWeight: activeTab===tab ? 600 : 400, fontSize:'0.85rem', whiteSpace:'nowrap' }}>{label}</button>
         ))}
       </div>
