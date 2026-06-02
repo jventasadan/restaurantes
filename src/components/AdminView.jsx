@@ -318,26 +318,31 @@ function AdminView() {
     const hoy = dias[new Date().getDay()];
     const toImport = diaParsedItems.filter(i => i.selected);
     if (!toImport.length) return;
-    // Borrar los platos del menú del día de hoy antes de importar
-    await supabase.from('menu_items').delete()
+    // Borrar los platos del menú del día anteriores
+    const { error: delErr } = await supabase.from('menu_items').delete()
       .eq('restaurant_id', selectedRestId)
-      .eq('category', 'Menú del Día')
-      .like('notes', `menu_dia_%`);
+      .eq('category', 'Menú del Día');
+    if (delErr) { showMsg('Error al borrar menú anterior: ' + delErr.message, true); return; }
+    let insertErrors = [];
     for (const item of toImport) {
-      await supabase.from('menu_items').insert({
+      const { error: insErr } = await supabase.from('menu_items').insert({
         restaurant_id: selectedRestId,
         category: 'Menú del Día',
         name: item.name,
         description: item.description || null,
         price: parseFloat(item.price) || 0,
-        price_type: item.price_type || 'por persona',
+        price_type: item.price_type || 'por unidad',
         allergens: item.allergens || [],
         available: true,
-        notes: `menu_dia_${hoy.toLowerCase()}`,
-        source: 'menu_dia'
+        notes: `menu_dia_${hoy.toLowerCase()}`
       });
+      if (insErr) insertErrors.push(insErr.message);
     }
-    showMsg(`${toImport.length} platos del menú del día importados ✓`);
+    if (insertErrors.length) {
+      showMsg('Errores al insertar: ' + insertErrors[0], true);
+    } else {
+      showMsg(`${toImport.length} platos del menú del día importados ✓`);
+    }
     setDiaParsedItems([]); setDiaText(''); setDiaImagePreview(''); setDiaImageFile(null);
     loadAll();
   };
