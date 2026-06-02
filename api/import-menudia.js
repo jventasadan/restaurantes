@@ -15,11 +15,10 @@ export default async function handler(req, res) {
   const diasValidos = ['lunes','martes','miércoles','jueves','viernes'];
   const hoy = diasValidos.includes(dia) ? dia : diasValidos[new Date().getDay() - 1] || 'lunes';
 
-  // Borrar anteriores
+  // Borrar solo los items del día seleccionado
   await supabase.from('menu_items').delete()
-    .eq('restaurant_id', restaurant_id).eq('category', 'Menú del Día');
-  await supabase.from('menu_items').delete()
-    .eq('restaurant_id', restaurant_id).like('notes', 'menu_dia_%');
+    .eq('restaurant_id', restaurant_id)
+    .like('notes', `menu_dia_${hoy}|%`);
 
   // Insertar nuevos
   const errors = [];

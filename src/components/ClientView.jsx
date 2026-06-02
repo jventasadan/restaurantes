@@ -1023,7 +1023,7 @@ function ClientView() {
                 if (low.includes('segundo') || low.includes('principal') || low.includes('especial')) return 'Segundos';
                 if (low.includes('primer') || low.includes('entrant')) return 'Primeros';
                 if (low.includes('postre') || low.includes('café') || low.includes('cafe')) return 'Postre o Café';
-                if (low.includes('bebida')) return 'Bebida';
+                if (low.includes('bebida') || low.includes('cockta') || low.includes('refresc') || low.includes('cerveza') || low.includes('agua') || low.includes('vino') || low.includes('zumo') || low.includes('jugo')) return 'Bebida';
                 return sub || 'Otros';
               };
               const groups = {};
