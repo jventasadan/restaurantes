@@ -570,7 +570,8 @@ function ClientView() {
     'VINO', 'RIBERA', 'RIBEIRA', 'RIBELA', 'RIOJA', 'CASTILLA', 'JUMILLA', 'MADRID',
     'CAVA', 'CHAMPAGNE', 'CHAMPAN', 'PROSECCO', 'SIN ALCOHOL', 'D.O.',
     'ALBARI', 'RUEDA', 'PENEDES', 'PRIORAT', 'SOMONTANO', 'JEREZ', 'VERDEJO',
-    'DUERO', 'LEON', 'BIERZO', 'GALICIA', 'NAVARRA', 'ARAGON', 'ANDALUC'
+    'DUERO', 'LEON', 'BIERZO', 'GALICIA', 'NAVARRA', 'ARAGON', 'ANDALUC',
+    'EXTREMADURA', 'V.T.', 'VINO DE PAGO', 'V.T'
   ];
 
   const isWineCategory = (cat) => {
@@ -595,10 +596,15 @@ function ClientView() {
   };
 
   // Subcategoría dentro de Bebidas para agrupar en la vista
-  const getBeverageSubcat = (cat) => {
-    if (!cat) return 'Otras bebidas';
-    const low = cat.toLowerCase().trim();
-    if (low.includes('cockta') || low.includes('mojito') || low.includes('mocktail')) return 'Cócteles y Mocktails';
+  const getBeverageSubcat = (item) => {
+    const cat = (item.category || '').toLowerCase().trim();
+    const name = (item.name || '').toLowerCase().trim();
+    if (cat.includes('cockta') || cat.includes('mojito') || cat.includes('mocktail') ||
+        name.includes('mojito') || name.includes('cockt') || name.includes('margarita') ||
+        name.includes('martini') || name.includes('caipirinha') || name.includes('colada') ||
+        name.includes('mule') || name.includes('sour') || name.includes('negroni') ||
+        name.includes('spritz') || name.includes('daiquiri') || name.includes('ipanema') ||
+        name.includes('strawberry fields') || name.includes('passion')) return 'Cócteles y Mocktails';
     return 'Refrescos, Cervezas y Vinos por copa';
   };
 
@@ -607,13 +613,16 @@ function ClientView() {
     if (isWineCategory(cat)) return 'Vinos';
     if (isMenuCategory(cat)) return 'Menú';
     if (isBeverageCategory(cat)) return 'Bebidas';
-    // Normalizar capitalización: "ENTRANTES" → "Entrantes"
+    const low = cat.toLowerCase().trim();
+    // Especiales solo van en Menú del Día, excluir de carta principal
+    if (low === 'especiales' || low === 'especial') return '__SKIP__';
+    // Normalizar capitalización
     return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
   };
 
   // Orden fijo de categorías
   const CATEGORY_ORDER = ['Menú', 'Para compartir', 'Cortes y ensaladas', 'Carnes', 'Arroces', 'Pescados', 'Bebidas', 'Vinos', 'Postres'];
-  const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)))];
+  const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)).filter(c => c !== '__SKIP__'))];
   const hasWines = menuItems.some(item => isWineCategory(item.category));
   const hasMenu = uniqueCats.includes('Menú');
   const hasBev = uniqueCats.includes('Bebidas');
@@ -1029,7 +1038,7 @@ function ClientView() {
             (() => {
               const bevGroups = {};
               filteredMenuItems.forEach(item => {
-                const sub = getBeverageSubcat(item.category);
+                const sub = getBeverageSubcat(item);
                 if (!bevGroups[sub]) bevGroups[sub] = [];
                 bevGroups[sub].push(item);
               });
