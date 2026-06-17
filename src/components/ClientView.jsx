@@ -274,7 +274,7 @@ function ClientView() {
       if (activeSession?.waiter_requested) {
         setMode('waiter');
       } else {
-        setMode('welcome');
+        setMode('menu');
       }
 
       // Obtener platos
@@ -897,42 +897,12 @@ function ClientView() {
         </div>
       </header>
 
-      {/* Tabs de Selección de Modo (Chat / Carta) */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        background: '#131313', 
-        padding: '0.25rem',
-        borderBottom: '1px solid rgba(255,255,255,0.05)'
-      }}>
-        <button 
-          onClick={() => setMode('chat')}
-          style={{ 
-            padding: '0.75rem', 
-            borderRadius: '8px', 
-            background: mode === 'chat' ? '#1A1A1A' : 'transparent',
-            border: 'none',
-            color: mode === 'chat' ? '#C8A96E' : '#A6A19A',
-            fontWeight: mode === 'chat' ? 600 : 400
-          }}
-        >
-          <MessageSquare size={16} style={{ marginRight: '0.5rem' }} />
-          Chat con {restaurant.assistant_name}
-        </button>
-        <button 
-          onClick={() => setMode('menu')}
-          style={{ 
-            padding: '0.75rem', 
-            borderRadius: '8px', 
-            background: mode === 'menu' ? '#1A1A1A' : 'transparent',
-            border: 'none',
-            color: mode === 'menu' ? '#C8A96E' : '#A6A19A',
-            fontWeight: mode === 'menu' ? 600 : 400
-          }}
-        >
-          <Utensils size={16} style={{ marginRight: '0.5rem' }} />
+      {/* Solo Carta Digital - sin chat */}
+      <div style={{ background: '#131313', padding: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ padding: '0.75rem', textAlign: 'center', color: '#C8A96E', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+          <Utensils size={16} />
           Carta Digital
-        </button>
+        </div>
       </div>
 
       {/* ----------------------------------------------------
