@@ -38,8 +38,8 @@ function DemoSelector() {
         .feature-card {
           opacity: 0;
           animation: fadeUp 0.6s ease forwards;
-          background: linear-gradient(145deg, rgba(40,28,12,0.9), rgba(25,18,8,0.95));
-          border: 1px solid rgba(200,146,58,0.18);
+          background: transparent;
+          border: 1px solid rgba(200,146,58,0.3);
           border-radius: 20px;
           padding: 1.8rem;
           transition: all 0.3s ease;
