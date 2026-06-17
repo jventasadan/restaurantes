@@ -24,8 +24,8 @@ function DemoSelector() {
 
       {/* Blobs cálidos */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,146,58,0.1) 0%, transparent 70%)', top: '-100px', left: '-100px', filter: 'blur(60px)', animation: 'blob1 8s ease-in-out infinite' }} />
-        <div style={{ position: 'absolute', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,120,40,0.07) 0%, transparent 70%)', bottom: '10%', right: '-80px', filter: 'blur(60px)', animation: 'blob2 10s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,146,58,0.04) 0%, transparent 70%)', top: '-50px', left: '-50px', filter: 'blur(80px)', animation: 'blob1 8s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', width: '250px', height: '250px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,120,40,0.03) 0%, transparent 70%)', bottom: '10%', right: '-40px', filter: 'blur(80px)', animation: 'blob2 10s ease-in-out infinite' }} />
       </div>
 
       <style>{`
