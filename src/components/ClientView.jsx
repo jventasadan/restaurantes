@@ -340,7 +340,7 @@ function ClientView() {
     ];
     setActiveCategory(prev => {
       if (prev && ordered.includes(prev)) return prev;
-      return ordered[0] || "Todos";
+      const bev = ordered.find(c => c === 'Bebidas'); return bev || ordered[0] || "Todos";
     });
   }, [menuItems]);
 
@@ -621,17 +621,17 @@ function ClientView() {
   };
 
   // Orden fijo de categorías
-  const CATEGORY_ORDER = ['Menú', 'Para compartir', 'Cortes y ensaladas', 'Carnes', 'Arroces', 'Pescados', 'Bebidas', 'Vinos', 'Postres'];
+  const CATEGORY_ORDER = ['Bebidas', 'Vinos', 'Menú', 'Para compartir', 'Cortes y ensaladas', 'Carnes', 'Arroces', 'Pescados', 'Postres'];
   const uniqueCats = [...new Set(menuItems.map(item => normalizeCategory(item.category)).filter(c => c !== '__SKIP__'))];
   const hasWines = menuItems.some(item => isWineCategory(item.category));
   const hasMenu = uniqueCats.includes('Menú');
   const hasBev = uniqueCats.includes('Bebidas');
   const orderedCats = [
+    ...(hasBev ? ['Bebidas'] : []),
+    ...(hasWines ? ['Vinos'] : []),
     ...(hasMenu ? ['Menú'] : []),
     ...CATEGORY_ORDER.filter(c => c !== 'Menú' && c !== 'Vinos' && c !== 'Bebidas' && uniqueCats.includes(c)),
     ...uniqueCats.filter(c => !CATEGORY_ORDER.includes(c) && c !== 'Vinos' && c !== 'Menú' && c !== 'Bebidas'),
-    ...(hasBev ? ['Bebidas'] : []),
-    ...(hasWines ? ['Vinos'] : []),
     'Postres',
     'Todos'
   ].filter((c, i, arr) => arr.indexOf(c) === i && (c === 'Todos' || uniqueCats.includes(c) || (c === 'Vinos' && hasWines)));
