@@ -274,7 +274,7 @@ function ClientView() {
       if (activeSession?.waiter_requested) {
         setMode('waiter');
       } else {
-        setMode('menu');
+        setMode('welcome');
       }
 
       // Obtener platos
@@ -802,17 +802,9 @@ function ClientView() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '350px', margin: 'auto 0 0 0' }}>
             <button 
-              onClick={() => setMode('chat')} 
+              onClick={() => setMode('menu')} 
               className="btn btn-primary"
               style={{ padding: '1rem' }}
-            >
-              <MessageSquare size={18} />
-              Hablar con Carlos (IA)
-            </button>
-            <button 
-              onClick={() => setMode('menu')} 
-              className="btn"
-              style={{ padding: '1rem', border: '1px solid rgba(200, 169, 110, 0.4)' }}
             >
               <Utensils size={18} />
               Ver Carta y Hacer Pedido
